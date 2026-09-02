@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>Air Chang</title>
+<script>
+  // GitHub Pages serves plain static files with no server-side rewrites,
+  // so a direct visit or refresh on a client-side route like
+  // /projects/gongdi 404s here. Standard workaround: redirect to
+  // index.html with the real path encoded in a query param; index.html's
+  // own inline script (see there) restores it via history.replaceState
+  // before the app boots, so the router still sees the right route.
+  var path = location.pathname + location.search + location.hash;
+  location.replace('/?p=' + encodeURIComponent(path));
+</script>
+</head>
+<body></body>
+</html>

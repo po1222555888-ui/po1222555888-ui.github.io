@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <script>
+    // Restores the real path after 404.html's GitHub Pages SPA-routing
+    // redirect (see that file) — must run before app.js reads
+    // location.pathname to boot the router.
+    (function () {
+      var p = new URLSearchParams(location.search).get('p');
+      if (p) history.replaceState(null, '', p);
+    })();
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Air Chang</title>
+  <meta name="description" content="Air Chang — Industrial Designer based in Taipei, Taiwan.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav id="nav">
+    <a href="/" class="nav-logo" data-link>Air Chang</a>
+    <div class="nav-links">
+      <a href="#projects-section" data-scroll="projects-section">Projects</a>
+      <a href="#info-section" data-scroll="info-section">About</a>
+      <a href="#contact-section" data-scroll="contact-section">Contact</a>
+    </div>
+  </nav>
+  <main id="app"></main>
+  <script src="/js/default-content.js"></script>
+  <script src="/js/app.js"></script>
+  <script src="/js/editor.js"></script>
+</body>
+</html>
+

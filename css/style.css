@@ -1,0 +1,3606 @@
+/* =============================================
+   Tokens
+   ============================================= */
+:root {
+  --bg:      #FFFFFF;
+  --bg2:     #F5F4F0;
+  --bg3:     #E8E6E0;
+  --ink:     #1A1A18;
+  --ink2:    #6B6B65;
+  --ink3:    #9B9B93;
+  --accent:  #C85A2A;
+  --border:  #E0DDD8;
+  --nav-h:   52px;
+  --px:      2.5rem;
+  --ease:    cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* =============================================
+   Reset
+   ============================================= */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* No scroll-behavior:smooth here on purpose — every scripted "jump to a
+   section" scroll now runs through smoothScrollTo() in app.js (custom
+   ease-out, RAF-driven), which calls plain window.scrollTo(x,y) many
+   times per animation; CSS smooth-scroll would otherwise try to animate
+   each of those intermediate calls too, fighting the JS animation. */
+html { font-size: 13px; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'DM Mono', monospace;
+  font-weight: 400;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; }
+img { display: block; max-width: 100%; }
+
+/* =============================================
+   Navigation
+   ============================================= */
+#nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--nav-h);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--px);
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: transform 320ms var(--ease);
+  /* Same face as Info's "Associated with N Projects" line
+     (.info-total-line). */
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+/* Scrolling down hides the bar, scrolling up (or being near the top)
+   brings it back — see the scroll listener in app.js. */
+#nav.nav-hidden {
+  transform: translateY(-100%);
+}
+
+.nav-logo {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+  transition: opacity 200ms var(--ease);
+}
+
+.nav-logo:hover { opacity: 0.7; }
+
+.nav-links {
+  display: flex;
+  gap: 2rem;
+}
+
+.nav-links a {
+  font-size: 12px;
+  color: var(--ink2);
+  letter-spacing: 0.04em;
+  transition: color 200ms var(--ease);
+}
+
+.nav-links a:hover,
+.nav-links a.active { color: var(--accent); }
+
+/* =============================================
+   Page Transitions
+   ============================================= */
+#app { min-height: 100vh; }
+
+.page {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 350ms var(--ease), transform 350ms var(--ease);
+}
+
+.page.visible { opacity: 1; transform: none; }
+
+/* =============================================
+   HOME
+   ============================================= */
+.home-hero {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.hero-placeholder {
+  width: 100%;
+  height: 100%;
+  background: var(--bg2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-placeholder-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink3);
+}
+
+/* Carousel dots */
+.hero-dots {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+}
+
+.hero-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.25);
+  cursor: pointer;
+  transition: background 200ms;
+}
+
+.hero-dot.active { background: rgba(0,0,0,0.7); }
+
+/* Carousel arrows */
+.hero-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.7);
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--ink);
+  transition: background 200ms;
+}
+
+.hero-arrow:hover { background: rgba(255,255,255,0.95); }
+.hero-arrow.prev { left: 1.5rem; }
+.hero-arrow.next { right: 1.5rem; }
+
+/* =============================================
+   PROJECTS SECTION
+   One-page site: this section now follows the hero directly in normal
+   flow instead of starting at the document top, so it no longer needs
+   its own nav-height clearance — just breathing room, plus a scroll
+   anchor offset so an in-page jump doesn't land underneath the fixed nav.
+   ============================================= */
+.projects-page {
+  padding-top: 3rem;
+  scroll-margin-top: var(--nav-h);
+}
+
+.projects-canvas {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.project-block {
+  position: absolute;
+  overflow: hidden;
+  display: block;
+  background: var(--bg2);
+  /* Scroll reveal: hidden until it scrolls into view, then .in-view (added
+     by an IntersectionObserver in app.js) fades + rises it into place —
+     and removed again once it scrolls back out, so it replays every time
+     it re-enters instead of only once ever. */
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 1600ms var(--ease), transform 1600ms var(--ease);
+}
+
+.project-block.in-view {
+  opacity: 1;
+  transform: none;
+}
+
+/* Editing needs every block visible and steady regardless of scroll
+   position — an element mid-fade or still hidden would be impossible to
+   select, drag, or resize. */
+.editor-active .project-block {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+
+
+.project-card-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0);
+  display: flex;
+  align-items: flex-end;
+  padding: 1.25rem;
+  transition: background 300ms var(--ease);
+}
+
+.project-block:hover .project-card-overlay {
+  background: rgba(0,0,0,0.32);
+}
+
+.project-card-info {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 300ms var(--ease), transform 300ms var(--ease);
+}
+
+.project-block:hover .project-card-info {
+  opacity: 1;
+  transform: none;
+}
+
+.project-card-name {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: #fff;
+  display: block;
+  margin-bottom: 0.2rem;
+  letter-spacing: -0.01em;
+}
+
+.project-card-cat {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(255,255,255,0.7);
+}
+
+/* Placeholder block inside project card */
+.project-card-ph {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.project-card-ph span {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(255,255,255,0.3);
+}
+
+/* Cover image inside block — width/height/left/top are set by
+   applyPreciseCrop() in JS so the visible crop matches the crop modal exactly.
+   max-width:100% from the global img reset must be overridden: this image is
+   intentionally rendered larger than its container (that's how cover/zoom
+   works), so the reset's clamp would otherwise squash it non-uniformly. */
+.block-cover-img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: none;
+  max-height: none;
+  pointer-events: none;
+}
+
+/* =============================================
+   INFO SECTION
+   One-page site: this section follows Projects directly in normal flow
+   (see the note on .projects-page above) — same nav-height adjustment.
+   ============================================= */
+.info-page {
+  padding: 4rem var(--px) 0.3rem;
+  max-width: 820px;
+  margin: 0 auto;
+  scroll-margin-top: var(--nav-h);
+  position: relative;
+}
+
+/* Contact — full-bleed inverted (dark) block. Sits at the very bottom of
+   the page, so it also carries the site footer text below the phone/email
+   canvas. */
+.contact-page {
+  background: var(--ink);
+  padding: 4rem var(--px) 3rem;
+  scroll-margin-top: var(--nav-h);
+}
+.contact-page .ihb-toolbar {
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+/* Free-form draggable text blocks (phone/email, plus any user-added ones)
+   — same convention as .ihb-block/.ihb-custom in the Info header. */
+.contact-canvas {
+  position: relative;
+  max-width: 820px;
+  margin: 0 auto;
+  min-height: 6rem;
+}
+.contact-block {
+  position: absolute;
+}
+.editor-active .contact-block { cursor: move; }
+.editor-active .contact-block .rh { display: block; }
+.editor-active .contact-block .tb-panel { opacity: 1; pointer-events: auto; }
+.editor-active .contact-block:hover .ihb-del { display: block; }
+.contact-block p {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: text;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.contact-footer {
+  max-width: 820px;
+  margin: 3rem auto 0;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(245, 244, 240, 0.15);
+  font-size: 11px;
+  color: var(--ink3);
+  text-align: center;
+}
+
+/* Info page width drag handles (edit mode) — adjust max-width, so the
+   page stays responsive at any chosen width rather than locking to a
+   fixed inset. Positioned at .info-page's own outer edge each frame. */
+.info-width-handle {
+  display: none;
+  position: fixed;
+  /* top/height are set inline per-instance (see injectInfoWidthHandles),
+     matching each control's own target section — NOT top:0;bottom:0,
+     which for position:fixed spans the WHOLE viewport and would sit on
+     top of unrelated content (this broke editing text elsewhere on the
+     page when Experience/Awards each got their own pair of handles). */
+  width: 14px;
+  cursor: col-resize;
+  z-index: 11;
+}
+.editor-active .info-width-handle { display: block; }
+.info-width-handle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 3px;
+  background: var(--accent);
+  opacity: 0.18;
+  border-radius: 2px;
+  transition: opacity 150ms;
+}
+.info-width-handle:hover::after { opacity: 0.8; }
+
+/* Top block: photo, name, location, skills, contact, and the total-count
+   banner are all free-form blocks on one shared canvas (see
+   .ihb-block below) — dragged/resized like the project grid, statement/
+   credit, and custom text blocks elsewhere in the app. */
+.info-header-canvas {
+  position: relative;
+  margin-bottom: 3rem;
+  padding-bottom: 3rem;
+}
+
+.ihb-block {
+  position: absolute;
+}
+.editor-active .ihb-block { cursor: move; }
+.editor-active .ihb-block .rh { display: block; }
+.editor-active .ihb-block .tb-panel { opacity: 1; pointer-events: auto; }
+
+.ihb-custom p {
+  width: 100%;
+  height: 100%;
+  cursor: text;
+  overflow-wrap: break-word;
+  /* Preserve manual line breaks typed in the editor textarea — plain
+     text nodes collapse \n by default, which is why they'd type a line
+     break and see it rendered back on one line. */
+  white-space: pre-wrap;
+}
+
+.ihb-del {
+  display: none;
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 50%;
+  background: #c0392b;
+  color: #fff;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  z-index: 15;
+}
+.editor-active .ihb-block:hover .ihb-del { display: block; }
+
+/* Toolbar above the header canvas: restore-hidden-block chips + add */
+.ihb-toolbar {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+}
+.editor-active .ihb-toolbar { display: flex; }
+.ihb-toolbar .itr-restore-row { padding-bottom: 0; }
+.ihb-add-btn {
+  flex-shrink: 0;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ink2);
+  background: transparent;
+  border: 1px dashed var(--border);
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ihb-add-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+.info-photo {
+  width: 100%;
+  height: 100%;
+  background: var(--bg2);
+  object-fit: cover;
+  display: block;
+}
+
+.info-photo-ph {
+  width: 100%;
+  height: 100%;
+  background: var(--bg2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--ink3);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.info-photo-stack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.info-photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.info-photo-stack .info-photo-img {
+  position: absolute;
+  inset: 0;
+}
+
+/* Easter egg — a second photo crossfades in on hover, if one's been
+   uploaded (see .info-photo-panel's "+2" control). */
+.info-photo-img-2 {
+  opacity: 0;
+  transition: opacity 500ms var(--ease);
+}
+
+.info-photo-stack:hover .info-photo-img-2 {
+  opacity: 1;
+}
+
+/* Upload/replace/remove panel for the Info header's photo block — same
+   look as .dc-panel (cover image) / .gb-panel (gallery images). */
+.info-photo-panel {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms;
+  display: flex;
+  gap: 2px;
+}
+
+.editor-active .ihb-block[data-ihb-id="photo"] .info-photo-panel { opacity: 1; pointer-events: auto; }
+
+.info-photo-upload,
+.info-photo-upload2,
+.info-photo-del,
+.info-photo-del2 {
+  padding: 0.3rem 0.5rem;
+  background: rgba(255,255,255,0.92);
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--ink);
+  transition: background 150ms, color 150ms;
+}
+
+.info-photo-upload:hover,
+.info-photo-upload2:hover { background: #fff; color: var(--accent); }
+.info-photo-del, .info-photo-del2 { color: #c0392b; }
+.info-photo-del:hover, .info-photo-del2:hover { background: #fff; }
+
+.info-name {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 2rem;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  white-space: pre-wrap;
+}
+
+.info-location {
+  font-size: 12px;
+  color: var(--ink2);
+  white-space: pre-wrap;
+}
+
+.info-skills-row {
+  font-size: 11px;
+  color: var(--ink3);
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.info-contact-link {
+  display: block;
+  font-size: 12px;
+  color: var(--ink2);
+  transition: color 200ms;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.info-contact-link:hover { color: var(--accent); }
+
+/* Info sections */
+.info-section {
+  padding: 2.5rem 0;
+}
+
+/* Experience + Awards side by side — both tend to be short lists, so
+   putting them on one row uses the space better than stacking them. */
+.info-lists-row {
+  display: flex;
+  gap: 3rem;
+  align-items: flex-start;
+  position: relative;
+}
+
+/* Drag handle in the gap between Experience/Awards — same visual
+   language as the width-adjustment handles elsewhere on Info. */
+.ilg-handle {
+  display: none;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 14px;
+  cursor: col-resize;
+  z-index: 5;
+}
+.editor-active .ilg-handle { display: block; }
+.ilg-handle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 3px;
+  background: var(--accent);
+  opacity: 0.25;
+  border-radius: 2px;
+  transition: opacity 150ms;
+}
+.ilg-handle:hover::after { opacity: 0.9; }
+
+.info-lists-row > .info-section {
+  flex: 1 1 0;
+  min-width: 0;
+  border-bottom: none;
+}
+@media (max-width: 640px) {
+  .info-lists-row { flex-direction: column; gap: 0; }
+  /* Stacked again on narrow screens — restore the divider between them
+     that the side-by-side layout above relies on the row's own border for. */
+  .info-lists-row > .info-section:first-child { border-bottom: 1px solid var(--border); }
+}
+
+.info-section-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--ink);
+  margin-bottom: 1.5rem;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.info-row {
+  display: flex;
+  justify-content: center;
+  gap: 3rem;
+  align-items: baseline;
+  padding: 0.5rem 0;
+  font-size: 12px;
+}
+
+.info-row-name { color: var(--ink); }
+
+.info-row-sub {
+  color: var(--ink2);
+  font-size: 11px;
+}
+
+.info-row-date {
+  color: var(--ink3);
+  font-size: 11px;
+  min-width: 4.5rem;
+  text-align: right;
+}
+
+/* Experience rows are slightly different. Font sizes scale together via
+   --row-scale (set inline on #info-exp-section / #info-award-section,
+   default 1 = 100%) — same mechanism as the project list above. */
+.info-exp-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0.6rem 0;
+  font-size: calc(12px * var(--row-scale, 1));
+  border-bottom: 1px solid var(--bg2);
+  position: relative;
+  min-height: var(--row-h, auto);
+}
+
+.info-exp-row:last-of-type { border-bottom: none; }
+
+/* Drag handle on exp/award rows sits outside the flex flow so the
+   layout is identical in and out of edit mode */
+.info-exp-row .itr-handle {
+  position: absolute;
+  left: -24px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.info-exp-left {}
+.info-exp-company { color: var(--ink); display: block; }
+.info-exp-role { color: var(--ink2); font-size: calc(11px * var(--row-scale, 1)); }
+.info-exp-period { color: var(--ink3); font-size: calc(11px * var(--row-scale, 1)); white-space: nowrap; }
+
+/* =============================================
+   INFO — Total Banner + Project Table
+   ============================================= */
+/* Full-bleed to the viewport's edges — the classic symmetric
+   "left:50%; margin-left:-50vw" trick is safe here (unlike the project
+   list's separator line, which needed the more robust measured-offset
+   version) because .info-page has no asymmetric padding to break it:
+   it's always a centered max-width box. var(--vw-safe) (see
+   applyViewportSafeWidth in app.js) is the scrollbar-corrected 100vw,
+   so this can't itself introduce horizontal overflow. The outer wrapper
+   stays in normal flow so its height still tracks the (font-size
+   fitted, see applyTotalLineFit) line's actual height. */
+.info-total-line-outer {
+  position: relative;
+  padding: 2rem 0;
+}
+.info-total-line {
+  position: relative;
+  left: 50%;
+  margin-left: calc(-1 * var(--vw-safe, 100vw) / 2);
+  width: var(--vw-safe, 100vw);
+  box-sizing: border-box;
+  padding: 0 calc(var(--px) + 4rem);
+  white-space: nowrap;
+  text-align: center;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.info-proj-table {
+  padding-left: var(--px);
+  padding-right: var(--px);
+  padding-bottom: 1.5rem;
+  margin-bottom: 0;
+  position: relative;
+}
+/* Full-bleed to the viewport's edges, same --proj-row-x/--vw-safe
+   technique as .info-proj-row::after — see that rule's comment. */
+.info-proj-table::after {
+  content: '';
+  position: absolute;
+  left: calc(-1 * var(--proj-table-x, 0px));
+  bottom: 0;
+  width: var(--vw-safe, 100vw);
+  height: 1px;
+  background: var(--border);
+}
+
+.info-proj-head {
+  display: none;
+  grid-template-columns: 90px 150px minmax(0, 1fr) 90px;
+  gap: 1.5rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--ink);
+}
+/* Hidden in normal browsing (per-column labels not wanted there), but
+   still shown in edit mode since it also carries the column-management
+   controls (resize/reorder/hide handles). */
+.editor-active .info-proj-head { display: grid; }
+
+.itr-head-cell {
+  font-size: calc(10px * var(--row-scale, 1));
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink3);
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.itr-head-drag {
+  display: none;
+  flex-shrink: 0;
+  cursor: grab;
+  color: var(--ink3);
+  font-size: 11px;
+  letter-spacing: -2px;
+  user-select: none;
+}
+.editor-active .itr-head-drag { display: block; }
+.itr-head-drag:active { cursor: grabbing; }
+.itr-head-cell.itr-col-dragging { opacity: 0.4; }
+
+.itr-head-label { flex: 1; min-width: 0; }
+.editor-active .itr-head-label[contenteditable="true"] {
+  outline: none;
+  border-bottom: 1px solid var(--border);
+  cursor: text;
+}
+.editor-active .itr-head-label[contenteditable="true"]:focus {
+  border-bottom-color: var(--accent);
+  background: rgba(200,90,42,0.03);
+}
+
+.itr-head-del {
+  display: none;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: #c0392b;
+  color: #fff;
+  font-size: 8px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+.editor-active .itr-head-cell:hover .itr-head-del { display: block; }
+
+/* Restore-hidden-column chips — appear above the table only when at
+   least one column has been hidden. */
+.itr-restore-row {
+  display: none;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 0.5rem;
+}
+.editor-active .itr-restore-row.has-hidden { display: flex; }
+.itr-restore-chip {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--ink2);
+  background: var(--bg2);
+  border: 1px dashed var(--border);
+  padding: 3px 8px;
+  cursor: pointer;
+}
+.itr-restore-chip:hover { color: var(--accent); border-color: var(--accent); }
+
+.info-proj-row {
+  display: grid;
+  grid-template-columns: 90px 150px minmax(0, 1fr) 90px;
+  gap: 1.5rem;
+  padding: 0.8rem 0;
+  align-items: center;
+  position: relative;
+  min-height: var(--row-h, auto);
+}
+
+/* Separator line — full-bleed to the viewport's edges rather than the
+   row's own (inset) border-bottom, while the row's actual columns stay
+   exactly where they are.
+
+   Positioned from --proj-row-x, set in app.js (applyProjRowLineOffset)
+   to each row's own measured distance from the viewport's left edge —
+   left:calc(-1 * that) pulls the line's left edge to viewport x:0
+   regardless of where the row itself sits, then var(--vw-safe) (also
+   app.js, from clientWidth) gives it the viewport's true width.
+
+   This used to be the CSS-only "left/right:50% + matching negative
+   -50vw margins" trick, which only works if the row's own horizontal
+   center happens to line up with the viewport's center — fragile
+   whenever anything makes .info-proj-table's left/right padding
+   asymmetric. Measuring each row's real position can't drift out of
+   sync with it the way a symmetry assumption can. */
+.info-proj-row::after {
+  content: '';
+  position: absolute;
+  left: calc(-1 * var(--proj-row-x, 0px));
+  bottom: 0;
+  width: var(--vw-safe, 100vw);
+  height: 1px;
+  background: var(--border);
+}
+.info-proj-row:last-of-type::after { display: none; }
+
+/* Rows with a configured project link (see .itr-link-btn) navigate to
+   that project's page in normal browsing — hover flips the row to a
+   top-to-bottom orange-to-white gradient with white text as a click
+   affordance. Rows with no link configured stay inert (no hover state,
+   default cursor). Disabled in edit mode, where a row click means
+   drag-reorder / inline cell editing instead — see the delegated
+   navigation listener in app.js. */
+.info-proj-row[data-proj-link] { cursor: pointer; }
+
+/* Full-bleed to the viewport's edges, same --proj-row-x/--vw-safe
+   technique as .info-proj-row::after (the separator line) — the row's
+   OWN box only spans the inset column content, so painting the gradient
+   as the row's plain `background` (the original approach) stopped at
+   that inset instead of reaching the screen edges. A dedicated ::before
+   keeps this independent of ::after's own job. transform:scaleY (not
+   opacity) is what makes it "grow down from the top" on hover rather
+   than fading in uniformly everywhere at once; z-index:-1 keeps it
+   behind the row's own text (plain in-flow content always paints above
+   a negative-z-index positioned sibling, so the text needs no z-index
+   of its own to stay on top). */
+.info-proj-row[data-proj-link]::before {
+  content: '';
+  position: absolute;
+  left: calc(-1 * var(--proj-row-x, 0px));
+  top: 0;
+  bottom: 0;
+  width: var(--vw-safe, 100vw);
+  background: linear-gradient(to bottom, var(--accent) 0%, var(--accent) 30%, #fff 100%);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 500ms ease;
+  z-index: -1;
+}
+body:not(.editor-active) .info-proj-row[data-proj-link]:hover::before {
+  transform: scaleY(1);
+}
+body:not(.editor-active) .info-proj-row[data-proj-link]:hover .itr-cat,
+body:not(.editor-active) .info-proj-row[data-proj-link]:hover .itr-note,
+body:not(.editor-active) .info-proj-row[data-proj-link]:hover .itr-name,
+body:not(.editor-active) .info-proj-row[data-proj-link]:hover .itr-role,
+body:not(.editor-active) .info-proj-row[data-proj-link]:hover .itr-date {
+  color: #fff;
+  transition: color 500ms ease;
+}
+
+/* Drag handle sits outside the grid (same pattern already used for
+   .info-exp-row .itr-handle) so the columns start at the exact same
+   spot whether or not it's showing — it used to be the grid's own
+   leading track (0px in view mode, 22px in edit mode, since only edit
+   mode shows it), which meant every column's text visibly shifted
+   right by 22px in edit mode. */
+.info-proj-row .itr-handle {
+  position: absolute;
+  left: -24px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Link + delete buttons for a row, grouped in one flush container rather
+   than each having its own separate offset. Two elements that both only
+   show on row-hover but sit a few px apart (each with its OWN gap from
+   the row) break that hover chain the moment the cursor crosses either
+   gap — nothing is rendered there, :hover drops, both vanish before a
+   click can land. left:100% with no margin keeps this container's own
+   box flush against the row, zero gap — any space BETWEEN the two
+   buttons inside it is still covered by the container's own hoverable
+   box, so it doesn't need the same treatment. */
+.itr-row-actions {
+  display: none;
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  align-items: center;
+  gap: 4px;
+  z-index: 5;
+}
+.editor-active .info-proj-row:hover .itr-row-actions { display: flex; }
+
+.itr-link-btn, .itr-del-btn {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+.itr-link-btn {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--ink2);
+}
+/* Set once this row actually has a link (see openProjLinkPicker) — a
+   quick visual cue of which rows are already configured without having
+   to hover into the picker to check. */
+.itr-link-btn.itr-link-btn-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.itr-del-btn {
+  border: none;
+  background: #c0392b;
+  color: #fff;
+}
+
+/* Floating picker opened by .itr-link-btn — same convention as
+   #info-text-editor. */
+#proj-link-picker {
+  position: fixed;
+  width: 200px;
+  background: #fff;
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.13);
+  z-index: 700;
+  padding: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.plp-head { display: flex; justify-content: space-between; align-items: center; }
+.plp-tag  { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink3); }
+.plp-x    { background: none; border: none; font-size: 12px; cursor: pointer; color: var(--ink3); }
+.plp-x:hover { color: var(--ink); }
+.plp-select {
+  width: 100%;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 5px 6px;
+  cursor: pointer;
+}
+
+/* Small cover-image preview that follows the cursor over a linked
+   project-list row (see app.js). scale(0.5->1) together with an opacity
+   fade, both on the same standard ease — grows and fades in at once
+   rather than a bounce/overshoot, and reverses the same way (no
+   separate exit rule needed, both properties just animate back toward
+   their hidden values whenever .visible is removed). width/height below
+   are just the pre-JS fallback — app.js sets its own randomized size
+   (base 285x195, ±20%) inline on every row it shows, so the "50%" start
+   point is always relative to THAT row's own size, not a fixed one. */
+#proj-hover-preview {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 285px;
+  height: 195px;
+  background-color: var(--bg2);
+  background-size: cover;
+  background-position: center;
+  pointer-events: none;
+  z-index: 900;
+  transform: scale(0.7);
+  transform-origin: 0% 100%;
+  opacity: 0;
+  transition: transform 550ms var(--ease), opacity 550ms var(--ease);
+}
+#proj-hover-preview.visible {
+  transform: scale(1);
+  opacity: 1;
+}
+/* Belt-and-suspenders: even if a mousemove race left it visible right as
+   edit mode was entered, it must never show there — edit mode's own
+   hover behavior (drag/inline-edit) means something else entirely. */
+.editor-active #proj-hover-preview {
+  display: none;
+}
+
+/* Row height drag handle — always visible in edit mode as a small
+   grip pill at the bottom-center of each row */
+.itr-h-handle {
+  display: none;
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+  right: 0;
+  height: 10px;
+  cursor: ns-resize;
+  z-index: 4;
+}
+.editor-active .itr-h-handle { display: block; }
+.itr-h-handle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 3px;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ink3);
+  opacity: 0.3;
+  transition: opacity 120ms, background 120ms;
+}
+.itr-h-handle:hover::after { opacity: 1; background: var(--accent); }
+
+/* Row being live-dragged for reorder */
+.info-proj-row.itr-dragging {
+  opacity: 0.45;
+  background: rgba(200,90,42,0.05);
+}
+
+/* Add row button (project table + exp/award sections) */
+#itr-add-btn,
+.itr-add-btn-sec {
+  display: none;
+  width: 100%;
+  padding: 0.6rem 0;
+  border: none;
+  border-top: 1px dashed var(--border);
+  background: transparent;
+  color: var(--ink3);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  text-align: left;
+}
+#itr-add-btn:hover,
+.itr-add-btn-sec:hover { color: var(--accent); }
+.editor-active #itr-add-btn,
+.editor-active .itr-add-btn-sec { display: block; }
+
+/* "+" — expands the collapsed project list. Unlike the add-row button
+   above, this is a normal browsing feature, not editor-only. Centered
+   circular icon button; the last visible row's .itr-row-fade gradient
+   (below) is what actually signals "there's more" — the button itself
+   just needs to read as an obvious, minimal "expand" affordance. */
+.itr-expand-btn {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin: -1.5rem auto 0.25rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--ink2);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 150ms, color 150ms, border-color 150ms;
+}
+.itr-expand-btn:not(.itr-collapse-btn) {
+  margin-top: -4rem;
+  background: color-mix(in srgb, var(--bg) 50%, transparent);
+}
+.itr-expand-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* Fade the last visible row (5th) into the page background, hinting that
+   more projects continue below the "+" button. A real element
+   (.itr-fade-overlay, added only on this row — see the template) rather
+   than this row's own ::after: ::after is already .info-proj-row's
+   full-bleed separator line, and ::before is the hover-link gradient —
+   only two pseudo-element slots exist per element, so a third visual
+   layer needs a real one. This also used to set overflow:hidden on the
+   row (to contain the old ::after-based fade), which had the side
+   effect of clipping the OTHER full-bleed layers that are deliberately
+   meant to extend past the row's own box — the hover gradient (and the
+   line) stopped short of the viewport edges specifically on this one
+   row, which is what "the gradient doesn't reach the edge until it's
+   expanded" was. */
+.itr-fade-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 0%, var(--bg) 95%);
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 500ms ease;
+}
+/* Hidden on hover — this row's own fade-to-white and the orange hover
+   gradient (.info-proj-row[data-proj-link]::before) both painting at
+   once looked like the white fade was washing out the orange. */
+.info-proj-row:hover .itr-fade-overlay {
+  opacity: 0;
+}
+
+/* Newly-revealed rows after clicking "+" — starts hidden, animates in
+   (see renderInfo's double-rAF that adds -in). Each row's inline
+   transition-delay (set at render time) staggers them into a cascade. */
+.itr-row-reveal {
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 380ms var(--ease), transform 380ms var(--ease);
+}
+.itr-row-reveal.itr-row-reveal-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* Rows beyond the 5th, animating out after clicking "−" (see
+   collapseProjList) — mirrors .itr-row-reveal, added directly since the
+   row is already visible/painted (no need for the reveal's two-step
+   hidden-then-shown flip). */
+.itr-row-collapsing {
+  overflow: hidden;
+  pointer-events: none;
+  /* Target values (max-height/padding/border/opacity/transform) are set
+     via inline style in collapseProjList right after this class is
+     added, so the table/divider/Experience/Awards below actually rise
+     in sync with the fade instead of jumping once the rows are removed. */
+  transition: max-height 300ms var(--ease), padding-top 300ms var(--ease),
+    padding-bottom 300ms var(--ease), border-bottom-width 300ms var(--ease),
+    opacity 300ms var(--ease), transform 300ms var(--ease);
+}
+
+/* Font-size (%) control — one per list (project table / experience /
+   awards), visible only in edit mode. A normal flow row (not absolutely
+   positioned) so it never risks overlapping neighboring sections. */
+.itr-scale-ctrl {
+  display: none;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding-bottom: 0.6rem;
+  font-size: 10px;
+  color: var(--ink3);
+  letter-spacing: 0.04em;
+}
+.editor-active .itr-scale-ctrl { display: flex; }
+.itr-scale-ctrl input {
+  width: 46px;
+  padding: 2px 4px;
+  border: 1px solid var(--border);
+  background: #fff;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  text-align: right;
+}
+
+/* Contenteditable cells in edit mode */
+.editor-active .itr-cat[contenteditable="true"],
+.editor-active .itr-role[contenteditable="true"],
+.editor-active .itr-name[contenteditable="true"],
+.editor-active .itr-date[contenteditable="true"],
+.editor-active .info-exp-company[contenteditable="true"],
+.editor-active .info-exp-role[contenteditable="true"],
+.editor-active .info-exp-period[contenteditable="true"] {
+  outline: none;
+  border-bottom: 1px solid var(--border);
+  cursor: text;
+}
+.editor-active .itr-cat[contenteditable="true"]:focus,
+.editor-active .itr-role[contenteditable="true"]:focus,
+.editor-active .itr-name[contenteditable="true"]:focus,
+.editor-active .itr-date[contenteditable="true"]:focus,
+.editor-active .info-exp-company[contenteditable="true"]:focus,
+.editor-active .info-exp-role[contenteditable="true"]:focus,
+.editor-active .info-exp-period[contenteditable="true"]:focus {
+  border-bottom-color: var(--accent);
+  background: rgba(200,90,42,0.03);
+}
+
+/* Font sizes scale together via --row-scale (set inline on .info-proj-table,
+   default 1 = 100%), so one control can grow/shrink the whole list while
+   keeping each column's relative size relationship intact. */
+.itr-cat, .itr-role, .itr-note, .itr-name, .itr-date {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.itr-cat {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: calc(13px * var(--row-scale, 1));
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+}
+
+.itr-role {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: calc(13px * var(--row-scale, 1));
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.itr-note {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: calc(13px * var(--row-scale, 1));
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.itr-name {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: calc(15px * var(--row-scale, 1));
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.itr-date {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: calc(13px * var(--row-scale, 1));
+  font-weight: 500;
+  color: var(--ink);
+  text-align: right;
+}
+
+@media (max-width: 768px) {
+  .info-proj-head,
+  .info-proj-row {
+    grid-template-columns: 70px minmax(0, 1fr) 70px;
+    gap: 0.75rem;
+  }
+  .itr-role { display: none; }
+}
+
+/* =============================================
+   PROJECT DETAIL
+   ============================================= */
+.detail-page {
+  padding-top: 0;
+}
+
+/* ——— Split layout: fixed-in-place left column (title/description/meta/
+   album/link) alongside a normally-scrolling right column (images) ——— */
+.detail-split {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 3.5rem;
+  padding: 0 var(--detail-split-inset-r, var(--px)) 0 var(--detail-split-inset-l, var(--px));
+}
+
+/* Drag handle for adjusting the left/right column split — sits exactly
+   over the gap between columns (from .detail-left's right edge to
+   .detail-right's left edge, matching .detail-split's gap width), so it
+   never overlaps .detail-left's own content — otherwise it would swallow
+   clicks meant for the statement/credit resize anchors sitting right at
+   that edge (position:sticky on .detail-left traps their z-index inside
+   its own stacking context, so raising their z-index alone can't win
+   against a sibling handle here). Positioned via JS
+   (injectDetailSplitHandle) since its offset depends on the left
+   column's current computed width. */
+.detail-split-handle {
+  display: none;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3.5rem;
+  /* Small buffer so this handle's hit-area never reaches back far enough
+     to overlap .detail-statement/.detail-credit's own .rh-e resize
+     anchor, which straddles .detail-left's right edge a few px either
+     side of it. */
+  margin-left: 10px;
+  cursor: col-resize;
+  z-index: 5;
+}
+
+.editor-active .detail-split-handle { display: block; }
+
+.detail-split-handle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  margin-left: -0.5px;
+  background: transparent;
+  transition: background 150ms;
+}
+
+.detail-split-handle:hover::after,
+.detail-split-handle:active::after {
+  background: var(--accent);
+}
+
+/* Outer edge handles for adjusting .detail-split's left/right whitespace
+   (detailSplitInsetL/R) — same look as the Previous/Next nav's .dnv-handle,
+   positioned directly from the CSS vars they control since it's a 1:1
+   mapping (no measurement needed, unlike the middle ratio handle). */
+.detail-split-handle-l,
+.detail-split-handle-r {
+  display: none;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  cursor: ew-resize;
+  z-index: 5;
+  background: rgba(200,90,42,0.12);
+  border-left: 1px dashed rgba(200,90,42,0.55);
+  border-right: 1px dashed rgba(200,90,42,0.55);
+  transition: background 150ms;
+}
+
+.editor-active .detail-split-handle-l,
+.editor-active .detail-split-handle-r { display: block; }
+
+.detail-split-handle-l:hover,
+.detail-split-handle-r:hover { background: rgba(200,90,42,0.25); }
+
+.detail-split-handle-l { left: calc(var(--detail-split-inset-l, var(--px)) - 5px); }
+.detail-split-handle-r { right: calc(var(--detail-split-inset-r, var(--px)) - 5px); }
+
+/* When there's no cover image, .detail-split is the page's first child
+   and needs its own clearance below the fixed nav bar (the cover image,
+   when present, already provides that via its own top padding). */
+.detail-page > .detail-split:first-child {
+  padding-top: calc(var(--nav-h) + 3.5rem);
+}
+
+.detail-left {
+  flex: 0 0 var(--detail-split-left, 38%);
+  min-width: 260px;
+  position: sticky;
+  top: var(--nav-h);
+  max-height: 100vh;
+  /* No overflow-y:auto here on purpose: per the CSS overflow spec, setting
+     overflow-y to anything but visible forces overflow-x to compute as
+     auto too, which would clip the statement/credit resize handles (they
+     intentionally sit a few px outside this column's edge, like every
+     other resize handle in this codebase). If content ever exceeds
+     max-height it just overflows visibly rather than scrolling — an
+     acceptable trade-off for keeping the resize handles clickable. */
+  padding: 2.5rem 0 3rem;
+}
+
+.detail-right {
+  flex: 1 1 auto;
+  min-width: 0;
+  position: relative;
+}
+
+/* ——— Header: big auto-number + project name, now living inside the
+   fixed left column rather than as a full-width page banner ——— */
+.detail-header {
+  padding: 0;
+}
+
+.detail-number {
+  display: block;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: clamp(1rem, 2vw, 1.3rem);
+  color: var(--ink3);
+  letter-spacing: 0.08em;
+  margin-bottom: 1rem;
+}
+
+.detail-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: clamp(1.7rem, 3.2vw, 2.9rem);
+  line-height: 1.08;
+  color: var(--ink);
+  margin-bottom: 0.6rem;
+  letter-spacing: -0.02em;
+}
+
+.detail-subtitle {
+  position: relative;
+  font-family: 'Space Grotesk', sans-serif;
+  color: var(--ink3);
+  letter-spacing: 0.04em;
+}
+
+/* Optional cover image — sits above the split, inset from the edges
+   rather than running full-bleed. Its aspect ratio is a site-wide
+   setting (--detail-cover-ratio); the img itself is positioned by JS
+   (applyPreciseCrop, driven by p.coverImgX/Y/Zoom) for actual pan/zoom
+   crop control, not just object-fit auto-centering. */
+.detail-cover-img {
+  width: 100%;
+  /* No top or side padding — the image runs full-bleed to the top and
+     both edges of the page, under the fixed/translucent #nav. */
+  padding: 0 0 3rem;
+}
+.dc-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: var(--detail-cover-ratio, 1.9);
+  overflow: hidden;
+}
+.detail-cover-img img {
+  position: absolute;
+  display: block;
+  /* Override the global img{max-width:100%} reset — applyPreciseCrop
+     deliberately sizes this element larger than its container (that's
+     how the pan/zoom crop works), so the reset would otherwise clamp it
+     back down and silently break the crop. */
+  max-width: none;
+  max-height: none;
+}
+
+.editor-active .dc-frame {
+  /* overflow stays hidden here (unlike other free-form blocks) — the
+     crop image can be explicitly oversized via pan/zoom, so letting
+     overflow go visible in edit mode would bleed the zoomed photo down
+     over the content below it instead of just showing a handle poking
+     out a few px. */
+  outline: 1px dashed rgba(200,90,42,0.3);
+  outline-offset: 4px;
+}
+
+.editor-active .dc-frame .rh { display: block; }
+
+/* Pull the ratio-resize handle fully inside the frame instead of
+   letting it straddle the edge (the usual .rh-se convention), since
+   .dc-frame keeps overflow:hidden even in edit mode. */
+.dc-frame .rh-se {
+  right: 2px;
+  bottom: 2px;
+}
+
+/* Statement — plain document flow, width-only resize. */
+.detail-meta-row {
+  padding: 2.5rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.detail-statement {
+  position: relative;
+}
+
+/* Credit — free-form draggable/resizable block (like the outro
+   album/link), positioned via p.crPos within its own canvas. */
+.credit-canvas {
+  position: relative;
+  width: 100%;
+  margin-top: 2rem;
+}
+
+.detail-credit {
+  position: absolute;
+  overflow: hidden;
+}
+
+.editor-active .credit-canvas .detail-credit {
+  cursor: move;
+  overflow: visible;
+  outline: 1px dashed rgba(200,90,42,0.3);
+  outline-offset: 4px;
+}
+
+.editor-active .credit-canvas .detail-credit .rh { display: block; }
+
+/* Text style control panel (shared look across statement/credit/custom-text/link) */
+.tb-panel {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms;
+  display: flex;
+  gap: 2px;
+}
+
+.editor-active .detail-statement .tb-panel,
+.editor-active .detail-credit .tb-panel,
+.editor-active .detail-subtitle .tb-panel {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.editor-active .detail-statement .rh {
+  display: block;
+}
+
+.tb-fs, .tb-weight {
+  width: 34px;
+  padding: 0.25rem 0.3rem;
+  background: rgba(255,255,255,0.92);
+  border: none;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--ink);
+  text-align: center;
+}
+
+.tb-fs:focus, .tb-weight:focus { outline: 1px solid var(--accent); }
+
+.tb-color {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: rgba(255,255,255,0.92);
+  cursor: pointer;
+}
+
+.tb-del {
+  padding: 0.25rem 0.45rem;
+  background: rgba(255,255,255,0.92);
+  border: none;
+  font-size: 11px;
+  cursor: pointer;
+  color: #c0392b;
+  transition: background 150ms;
+}
+
+.tb-del:hover { background: #fff; }
+
+.detail-statement p {
+  font-size: 12px;
+  color: var(--ink2);
+  line-height: 1.8;
+  text-align: justify;
+}
+
+.meta-row {
+  position: relative;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  /* Small fixed breathing room — the actual adjustable distance to the
+     value is .meta-label's own width below, not this gap (see there for
+     why: a plain flex gap can't shrink the space a short label leaves
+     unused inside its own fixed-width column). */
+  gap: 0.5rem;
+  /* No fixed padding here on purpose — min-height alone controls the
+     row's spacing (default ~= the old 0.5rem-padding look) so dragging
+     --row-h smaller can actually shrink the row instead of being
+     floored by a competing padding value. */
+  min-height: var(--row-h, 2rem);
+}
+
+/* Drag handle for the label column's width — spans the whole credit
+   block's height (same visual language as .ilg-handle), positioned at
+   the label/value boundary by positionCreditLabelHandle (editor.js). */
+.credit-label-handle {
+  display: none;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 14px;
+  cursor: col-resize;
+  z-index: 5;
+}
+.editor-active .credit-label-handle { display: block; }
+.credit-label-handle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 3px;
+  background: var(--accent);
+  opacity: 0.25;
+  border-radius: 2px;
+  transition: opacity 150ms;
+}
+.credit-label-handle:hover::after { opacity: 0.9; }
+
+/* flex-shrink:0 (via the flex shorthand) is deliberate — it's what
+   makes --meta-label-w the actual reserved column width rather than
+   just a hint the browser can shrink away, which is the whole point of
+   making it draggable. A label's own text can still be shorter than
+   that width (the common case — that gap-that-isn't-a-gap dead space
+   is exactly what the handle is for), or in principle longer, in which
+   case it wraps rather than overflowing since white-space isn't
+   constrained to nowrap here. */
+.meta-label { color: var(--ink3); flex: 0 0 var(--meta-label-w, 5.5rem); }
+.meta-value { color: var(--ink); text-align: left; }
+
+.editor-active .detail-credit .meta-label,
+.editor-active .detail-credit .meta-value {
+  cursor: pointer;
+  outline: 1px dashed rgba(200,90,42,0.35);
+  outline-offset: 2px;
+  transition: outline-color 150ms, background 150ms;
+}
+.editor-active .detail-credit .meta-label:hover,
+.editor-active .detail-credit .meta-value:hover {
+  outline-color: var(--accent);
+  background: rgba(200,90,42,0.05);
+}
+
+.credit-add-row {
+  display: none;
+  margin-top: 0.85rem;
+  padding: 0.4rem 0.8rem;
+  background: none;
+  border: 1px dashed var(--border);
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  cursor: pointer;
+  color: var(--ink3);
+  transition: color 150ms, border-color 150ms;
+}
+.editor-active .credit-add-row { display: inline-block; }
+.credit-add-row:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ——— Free-form gallery canvas ("專案詳述") ——— */
+/* Gallery — single column, sequential, full-width images at their
+   natural aspect ratio (no more free-form x/y/w/h canvas or crop step) */
+.detail-gallery-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+  /* Breathing room between the last photo and the Prev/Next nav below
+     .detail-split — slightly more than the inter-image gap so the end
+     of the gallery reads as distinct from a gap between two photos. */
+  padding-bottom: 4rem;
+}
+
+.gallery-item {
+  position: relative;
+  width: 100%;
+  background: var(--bg2);
+  /* Scroll reveal — same mechanic as the home page's .project-block:
+     hidden until it scrolls into view, then .in-view (added by an
+     IntersectionObserver in app.js) fades + rises it into place, and
+     removed again once it scrolls back out so it replays every time. */
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 1600ms var(--ease), transform 1600ms var(--ease);
+}
+
+.gallery-item.in-view {
+  opacity: 1;
+  transform: none;
+}
+
+/* Editing needs every image visible and steady regardless of scroll
+   position, same reasoning as .editor-active .project-block. */
+.editor-active .gallery-item {
+  opacity: 1;
+  transform: none;
+}
+
+.gallery-item img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Once an item has been cropped (g.ratio set), it switches from natural
+   height:auto to a fixed frame with the img positioned by JS
+   (applyPreciseCrop, driven by g.imgX/Y/Zoom). */
+.gallery-item-cropped {
+  overflow: hidden;
+}
+
+.gallery-item-cropped img.gi-crop-img {
+  position: absolute;
+  width: auto;
+  height: auto;
+  display: block;
+  /* Same override as .detail-cover-img img — applyPreciseCrop sizes this
+     larger than its container on purpose. */
+  max-width: none;
+  max-height: none;
+}
+
+.gallery-empty-hint {
+  padding: 3rem var(--px);
+  text-align: center;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink3);
+}
+
+/* Gallery item edit panel (reorder handle / replace / delete) */
+.gb-panel {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms;
+  display: flex;
+  gap: 2px;
+}
+
+.editor-active .gallery-item .gb-panel { opacity: 1; pointer-events: auto; }
+
+.editor-active .gallery-item .rh { display: block; }
+
+/* Uncropped items have no overflow:hidden of their own (their box is
+   exactly the image's natural height) so the handle just sits flush at
+   the actual bottom-right corner; cropped items keep it pulled fully
+   inside like the cover frame's handle, since they do clip. */
+.gallery-item-cropped .rh-se {
+  right: 2px;
+  bottom: 2px;
+}
+
+.gb-handle {
+  display: flex;
+  align-items: center;
+  padding: 0.3rem 0.5rem;
+  background: rgba(255,255,255,0.92);
+  color: var(--ink3);
+  font-size: 12px;
+  letter-spacing: -2px;
+  cursor: grab;
+  user-select: none;
+}
+.gb-handle:active { cursor: grabbing; }
+
+.gb-del {
+  padding: 0.3rem 0.55rem;
+  background: rgba(255,255,255,0.92);
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  color: #c0392b;
+  transition: background 150ms;
+}
+
+.gb-del:hover { background: #fff; }
+
+.gb-replace,
+.gb-crop {
+  flex-shrink: 0;
+  padding: 0.3rem 0.55rem;
+  background: rgba(255,255,255,0.92);
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--ink);
+  transition: background 150ms, color 150ms;
+}
+
+.gb-replace:hover,
+.gb-crop:hover { background: #fff; color: var(--accent); }
+
+/* Cover image edit panel — same look as .gb-panel, positioned relative
+   to .dc-frame (not .detail-cover-img, which also carries padding) */
+.dc-panel {
+  position: absolute;
+  /* The cover frame now starts at the very top of the page (no top
+     padding), directly under the fixed #nav — offset below it so the
+     panel isn't hidden under/behind the nav bar. */
+  top: calc(var(--nav-h) + 6px);
+  right: 6px;
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms;
+  display: flex;
+  gap: 2px;
+}
+
+.editor-active .dc-frame .dc-panel { opacity: 1; pointer-events: auto; }
+
+.dc-crop,
+.dc-replace {
+  flex-shrink: 0;
+  padding: 0.3rem 0.55rem;
+  background: rgba(255,255,255,0.92);
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--ink);
+  transition: background 150ms, color 150ms;
+}
+
+.dc-crop:hover,
+.dc-replace:hover { background: #fff; color: var(--accent); }
+
+.dc-del {
+  padding: 0.3rem 0.55rem;
+  background: rgba(255,255,255,0.92);
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  color: #c0392b;
+  transition: background 150ms;
+}
+
+.dc-del:hover { background: #fff; }
+
+/* =============================================
+   Album + "Full Project" link — free-form blocks
+   ============================================= */
+.outro-row {
+  padding: 0 0 2.5rem;
+}
+
+/* ——— Section divider between the description/meta block and the
+   album/link block, both now inside .detail-left ——— */
+.section-divider {
+  position: relative;
+  width: 100%;
+}
+
+.section-divider-line {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--border);
+}
+
+.sd-handle {
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 14px;
+  margin-top: -7px;
+  cursor: ns-resize;
+  z-index: 5;
+  transition: background 150ms;
+}
+
+.editor-active .sd-handle { display: block; }
+.sd-handle:hover { background: rgba(200,90,42,0.10); }
+
+.sd-toggle {
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 6;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--ink2);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 150ms, color 150ms, border-color 150ms;
+}
+
+.editor-active .sd-toggle { display: flex; align-items: center; justify-content: center; }
+.sd-toggle:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.outro-canvas {
+  position: relative;
+  width: 100%;
+}
+
+.project-album,
+.full-project-link {
+  position: absolute;
+  overflow: hidden;
+}
+
+.editor-active .project-album,
+.editor-active .full-project-link {
+  cursor: move;
+  overflow: visible;
+  outline: 1px dashed rgba(200,90,42,0.3);
+  outline-offset: 4px;
+}
+
+.editor-active .project-album .rh,
+.editor-active .full-project-link .rh { display: block; }
+
+/* Album carousel */
+.project-album {
+  background: var(--bg2);
+}
+
+.album-track {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.album-slide {
+  position: absolute;
+  inset: 0;
+  transition: opacity 500ms var(--ease);
+}
+
+.album-slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.album-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink3);
+}
+
+.album-arrow { z-index: 3; }
+.album-dots  { z-index: 3; }
+
+/* Edit-mode panel for uploading / deleting album photos */
+.album-panel {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 10;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms;
+}
+
+.editor-active .project-album .album-panel { opacity: 1; pointer-events: auto; }
+
+.album-upload,
+.album-del-cur {
+  padding: 0.3rem 0.55rem;
+  background: rgba(255,255,255,0.92);
+  border: none;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--ink);
+  transition: background 150ms;
+}
+
+.album-upload:hover { background: #fff; }
+.album-del-cur { color: #c0392b; }
+.album-del-cur:hover { background: #fff; }
+
+/* "Full Project" link */
+.full-project-link {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.6rem;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.fpl-text {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.editor-active .fpl-text {
+  cursor: text;
+  outline: 1px dashed rgba(200,90,42,0.35);
+  outline-offset: 2px;
+}
+
+.editor-active .fpl-text:hover {
+  outline-color: var(--accent);
+  background: rgba(200,90,42,0.05);
+}
+
+.fpl-arrow {
+  transition: transform 200ms var(--ease);
+}
+
+.full-project-link:hover .fpl-arrow { transform: translateX(4px); }
+
+/* Edit-mode panel for removing the "Full Project" link entirely */
+.fpl-panel {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms;
+  display: flex;
+  gap: 2px;
+}
+
+.editor-active .full-project-link .fpl-panel { opacity: 1; pointer-events: auto; }
+
+.fpl-del {
+  padding: 0.25rem 0.45rem;
+  background: rgba(255,255,255,0.92);
+  border: none;
+  font-size: 11px;
+  cursor: pointer;
+  color: #c0392b;
+  transition: background 150ms;
+}
+
+.fpl-del:hover { background: #fff; }
+
+/* =============================================
+   User-added text blocks + thin lines — a full-height overlay
+   spanning .detail-right, so blocks can be dragged anywhere across
+   the gallery images in the right (scrolling) column only.
+   ============================================= */
+.custom-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 15;
+}
+
+.custom-text,
+.custom-line {
+  position: absolute;
+  pointer-events: auto;
+}
+
+.editor-active .custom-text,
+.editor-active .custom-line {
+  cursor: move;
+  overflow: visible;
+  outline: 1px dashed rgba(200,90,42,0.3);
+  outline-offset: 4px;
+}
+
+.editor-active .custom-text .rh,
+.editor-active .custom-line .rh { display: block; }
+
+.custom-text p {
+  font-size: 13px;
+  color: var(--ink2);
+  line-height: 1.6;
+  /* Preserve manual line breaks typed in the editor textarea — same fix
+     as .ihb-custom p (Info's custom text blocks). */
+  white-space: pre-wrap;
+}
+
+.editor-active .custom-text p {
+  cursor: text;
+}
+
+.custom-line {
+  min-height: 16px;
+}
+
+.custom-line::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--border);
+  transform: translateY(-50%);
+}
+
+.custom-panel {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms;
+  display: flex;
+  gap: 2px;
+}
+
+.editor-active .custom-text .custom-panel,
+.editor-active .custom-line .custom-panel {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.custom-del {
+  padding: 0.25rem 0.45rem;
+  background: rgba(255,255,255,0.92);
+  border: none;
+  font-size: 11px;
+  cursor: pointer;
+  color: #c0392b;
+  transition: background 150ms;
+}
+
+.custom-del:hover { background: #fff; }
+
+/* Detail navigation — left/right inset independently adjustable in edit mode */
+.detail-nav {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid var(--border);
+}
+
+.detail-nav-item {
+  padding: 2rem var(--px);
+  cursor: pointer;
+  transition: background 150ms;
+}
+
+.detail-nav-item:first-child {
+  padding-left: var(--detail-nav-inset-l, var(--px));
+  text-align: right;
+}
+.detail-nav-item:last-child { padding-right: var(--detail-nav-inset-r, var(--px)); }
+
+.detail-nav-item:hover { background: var(--bg2); }
+.detail-nav-item + .detail-nav-item { border-left: 1px solid var(--border); }
+
+.dnv-handle {
+  display: none;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  cursor: ew-resize;
+  z-index: 5;
+  background: rgba(200,90,42,0.12);
+  border-left: 1px dashed rgba(200,90,42,0.55);
+  border-right: 1px dashed rgba(200,90,42,0.55);
+  transition: background 150ms;
+}
+
+.editor-active .dnv-handle { display: block; }
+.dnv-handle:hover { background: rgba(200,90,42,0.25); }
+
+.dnv-handle-l { left: calc(var(--detail-nav-inset-l, var(--px)) - 5px); }
+.dnv-handle-r { right: calc(var(--detail-nav-inset-r, var(--px)) - 5px); }
+
+.nav-dir {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink3);
+  margin-bottom: 0.5rem;
+}
+
+.nav-proj {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  font-size: 1.2rem;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+/* =============================================
+   EDITOR
+   ============================================= */
+
+/* ——— Floating Toolbar ——— */
+#editor-toolbar {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 500;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+#editor-toolbar button {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.9rem;
+  background: var(--ink);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  transition: background 180ms var(--ease);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+  white-space: nowrap;
+}
+
+#editor-toolbar button:hover  { background: #333; }
+#editor-toolbar button.active { background: var(--accent); }
+#editor-toolbar button.active:hover { background: #a84822; }
+
+#edt-map { font-size: 14px; padding: 0.5rem 0.75rem; }
+
+/* Background colour picker */
+#edt-bg-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.9rem;
+  background: var(--ink);
+  color: #fff;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+  white-space: nowrap;
+  transition: background 180ms var(--ease);
+}
+
+#edt-bg-wrap:hover { background: #333; }
+
+#edt-bg-wrap input[type="color"] {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,0.35);
+  cursor: pointer;
+  background: none;
+  flex-shrink: 0;
+}
+
+/* ——— Site Map Panel ——— */
+#editor-sitemap {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 300px;
+  height: 100vh;
+  background: #fff;
+  border-left: 1px solid var(--border);
+  z-index: 400;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 280ms var(--ease);
+  box-shadow: -4px 0 24px rgba(0,0,0,0.08);
+  overflow-y: auto;
+}
+
+#editor-sitemap.open { transform: translateX(0); }
+
+.epp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.25rem 1rem;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 1;
+}
+
+.epp-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink3);
+}
+
+.epp-close {
+  background: none;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--ink3);
+  padding: 0.25rem;
+  transition: color 150ms;
+}
+
+.epp-close:hover { color: var(--ink); }
+
+.epp-nav {
+  padding: 0.75rem 0 2rem;
+}
+
+.epp-group {
+  margin: 0.25rem 0;
+}
+
+.epp-page,
+.epp-sub {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.55rem 1.25rem;
+  font-size: 12px;
+  color: var(--ink2);
+  transition: background 150ms, color 150ms;
+  cursor: pointer;
+}
+
+.epp-sub {
+  padding-left: 2rem;
+  font-size: 11px;
+  color: var(--ink3);
+}
+
+.epp-page:hover { background: var(--bg2); color: var(--ink); }
+.epp-sub:hover  { background: var(--bg2); color: var(--ink2); }
+
+.epp-active { color: var(--accent) !important; }
+.epp-active .epp-icon { color: var(--accent); }
+
+.epp-icon {
+  flex-shrink: 0;
+  width: 14px;
+  font-size: 10px;
+  color: var(--ink3);
+}
+
+.epp-name { flex: 1; }
+
+.epp-path {
+  font-size: 10px;
+  color: var(--ink3);
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.epp-footer {
+  padding: 1rem 1.25rem 1.5rem;
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+}
+
+.epp-add-project {
+  width: 100%;
+  padding: 0.65rem 1rem;
+  background: none;
+  border: 1px solid var(--border);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink2);
+  cursor: pointer;
+  transition: color 150ms, border-color 150ms, background 150ms;
+}
+
+.epp-add-project:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(200,90,42,0.04);
+}
+
+/* Free-form editor overlay panel */
+.fb-panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0.6rem 0.75rem 0.75rem;
+  background: rgba(0,0,0,0.42);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms;
+  z-index: 10;
+}
+
+.editor-active [data-block-id] .fb-panel {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* In edit mode, allow overflow so resize handles extend past block edges */
+.editor-active .projects-canvas { overflow: visible; }
+.editor-active [data-block-id] { cursor: move; overflow: visible; }
+
+/* Hide normal hover overlay in edit mode */
+.editor-active .project-block .project-card-overlay { display: none; }
+
+/* Top row: project selector + edit + delete */
+.fb-top {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.fb-del {
+  flex-shrink: 0;
+  padding: 0.3rem 0.55rem;
+  background: rgba(255,255,255,0.92);
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  color: #c0392b;
+  transition: background 150ms;
+}
+
+.fb-del:hover { background: #fff; }
+
+/* Resize handles (8-point) */
+.rh {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.25);
+  border-radius: 2px;
+  display: none;
+  z-index: 20;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.editor-active .project-block .rh { display: block; }
+
+.rh-n  { top: -5px; left: calc(50% - 5px); }
+.rh-ne { top: -5px; right: -5px; }
+.rh-e  { top: calc(50% - 5px); right: -5px; }
+.rh-se { bottom: -5px; right: -5px; }
+.rh-s  { bottom: -5px; left: calc(50% - 5px); }
+.rh-sw { bottom: -5px; left: -5px; }
+.rh-w  { top: calc(50% - 5px); left: -5px; }
+.rh-nw { top: -5px; left: -5px; }
+
+/* Alignment guides */
+.align-guide {
+  position: absolute;
+  pointer-events: none;
+  z-index: 100;
+  background: rgba(200,90,42,0.8);
+}
+
+.align-guide-v {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.align-guide-h {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+/* Dragging state */
+.block-dragging {
+  opacity: 0.75;
+  z-index: 50 !important;
+}
+
+/* Resize tooltip */
+.resize-tooltip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.72);
+  color: #fff;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  padding: 5px 10px;
+  pointer-events: none;
+  z-index: 30;
+  white-space: nowrap;
+}
+
+/* Old top-row alias (kept for selector reuse) */
+.ec-top {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.ec-proj-select {
+  flex: 1;
+  min-width: 0;
+  background: rgba(255,255,255,0.92);
+  border: none;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  padding: 0.3rem 0.5rem;
+  color: var(--ink);
+  cursor: pointer;
+  outline: none;
+}
+
+.ec-proj-select:hover { background: #fff; }
+
+.ec-edit-btn {
+  flex-shrink: 0;
+  padding: 0.3rem 0.55rem;
+  background: rgba(255,255,255,0.92);
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--ink);
+  transition: background 150ms, color 150ms;
+}
+
+.ec-edit-btn:hover { background: #fff; color: var(--accent); }
+
+/* Crop button (same row as edit/delete) */
+.fb-crop {
+  flex-shrink: 0;
+  padding: 0.3rem 0.55rem;
+  background: rgba(255,255,255,0.92);
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--ink);
+  transition: background 150ms, color 150ms;
+}
+
+.fb-crop:hover { background: #fff; color: var(--accent); }
+
+/* =============================================
+   CROP MODAL — drag-anchor crop frame (locked aspect ratio)
+   ============================================= */
+#crop-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cm-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  opacity: 0;
+  transition: opacity 240ms var(--ease);
+}
+
+#crop-modal.open .cm-backdrop { opacity: 1; }
+
+.cm-panel {
+  position: relative;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(10px);
+  opacity: 0;
+  transition: transform 240ms var(--ease), opacity 240ms var(--ease);
+}
+
+#crop-modal.open .cm-panel { transform: none; opacity: 1; }
+
+.cm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.cm-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink3);
+}
+
+.cm-close {
+  background: none;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--ink3);
+}
+
+.cm-close:hover { color: var(--ink); }
+
+.cm-stage {
+  position: relative;
+  overflow: hidden;
+  background: #111;
+}
+
+.cm-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.cm-frame {
+  position: absolute;
+  border: 1.5px solid #fff;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.55);
+  cursor: move;
+}
+
+.cm-frame .rh { display: block; }
+
+.cm-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0.85rem 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.cm-reset-btn {
+  padding: 0.5rem 1rem;
+  background: none;
+  border: 1px solid var(--border);
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  cursor: pointer;
+  color: var(--ink3);
+  transition: color 150ms, border-color 150ms;
+}
+
+.cm-reset-btn:hover { color: var(--ink); border-color: var(--ink3); }
+
+.cm-done-btn {
+  padding: 0.5rem 1.5rem;
+  background: var(--ink);
+  border: none;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  cursor: pointer;
+  color: #fff;
+  transition: background 150ms;
+}
+
+.cm-done-btn:hover { background: var(--accent); }
+
+/* Center hint on empty blocks */
+.ec-assign-hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(255,255,255,0.45);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 150ms;
+  pointer-events: auto;
+}
+
+.ec-assign-hint:hover { color: rgba(255,255,255,0.9); }
+
+/* Bottom row: grip + size controls */
+.ec-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ec-grip {
+  width: 28px;
+  height: 28px;
+  background: rgba(255,255,255,0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  color: var(--ink);
+  flex-shrink: 0;
+}
+
+.ec-grip:active { cursor: grabbing; }
+
+.ec-right {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.ec-current {
+  font-size: 10px;
+  color: rgba(255,255,255,0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ec-size-btn,
+.ec-ins-btn,
+.ec-del-btn {
+  padding: 0.35rem 0.7rem;
+  background: rgba(255,255,255,0.9);
+  border: none;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  color: var(--ink);
+  white-space: nowrap;
+  transition: background 150ms;
+}
+
+.ec-size-btn:hover,
+.ec-ins-btn:hover,
+.ec-del-btn:hover  { background: #fff; }
+
+.ec-ins-btn { color: var(--ink); }
+.ec-ins-btn:hover { color: var(--accent); }
+.ec-del-btn { color: #c0392b; }
+
+/* Legacy drag states (unused in free-form mode) */
+.project-block.ec-over {
+  outline: 2px solid var(--accent);
+}
+
+/* Add Block card */
+.project-add-card {
+  aspect-ratio: 16/9;
+  border: 2px dashed var(--border);
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  transition: border-color 200ms, background 200ms;
+}
+
+.project-add-card:hover {
+  border-color: var(--accent);
+  background: rgba(200,90,42,0.04);
+}
+
+.pac-plus {
+  font-size: 1.8rem;
+  color: var(--ink3);
+  line-height: 1;
+  transition: color 200ms;
+}
+
+.pac-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink3);
+  transition: color 200ms;
+}
+
+.project-add-card:hover .pac-plus,
+.project-add-card:hover .pac-label { color: var(--accent); }
+
+/* Edit-mode hint banner */
+.editor-active .projects-page::before {
+  content: 'Edit Mode — 拖曳移位 · 邊緣縮放 · 選擇專案入口';
+  display: block;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  padding: 0.6rem var(--px);
+  background: rgba(200,90,42,0.06);
+  border-bottom: 1px solid rgba(200,90,42,0.15);
+}
+
+/* =============================================
+   PROJECT EDITOR MODAL
+   ============================================= */
+#project-editor-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pem-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  opacity: 0;
+  transition: opacity 240ms var(--ease);
+}
+
+#project-editor-modal.open .pem-backdrop { opacity: 1; }
+
+.pem-panel {
+  position: relative;
+  width: 540px;
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100vh - 3rem);
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: translateY(10px);
+  opacity: 0;
+  transition: transform 240ms var(--ease), opacity 240ms var(--ease);
+}
+
+#project-editor-modal.open .pem-panel { transform: none; opacity: 1; }
+
+.pem-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.pem-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink3);
+}
+
+.pem-close {
+  background: none;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--ink3);
+  padding: 0.25rem;
+  transition: color 150ms;
+}
+
+.pem-close:hover { color: var(--ink); }
+
+.pem-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.pem-cover-section {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.pem-cover-preview {
+  aspect-ratio: 16/9;
+  background: var(--bg2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.pem-cover-ph {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink3);
+}
+
+.pem-cover-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.25rem;
+}
+
+.pem-upload-label {
+  display: block;
+  padding: 0.55rem 1rem;
+  background: var(--ink);
+  color: #fff;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  text-align: center;
+  transition: background 150ms;
+}
+
+.pem-upload-label:hover { background: #333; }
+
+.pem-remove-cover {
+  padding: 0.45rem 1rem;
+  background: none;
+  border: 1px solid var(--border);
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  color: var(--ink3);
+  transition: color 150ms, border-color 150ms;
+}
+
+.pem-remove-cover:hover { color: #c0392b; border-color: #c0392b; }
+
+.pem-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem 1rem;
+}
+
+.pem-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.pem-field > span {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink3);
+}
+
+.pem-field input,
+.pem-field textarea {
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border);
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--ink);
+  background: var(--bg);
+  outline: none;
+  transition: border-color 150ms;
+  resize: vertical;
+}
+
+.pem-field input:focus,
+.pem-field textarea:focus { border-color: var(--ink2); }
+
+.pem-field input[type="color"] {
+  height: 36px;
+  padding: 2px 4px;
+  cursor: pointer;
+}
+
+.pem-field-full { grid-column: 1 / -1; }
+
+.pem-footer {
+  padding: 0.85rem 1.25rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.pem-hint {
+  font-size: 10px;
+  color: var(--ink3);
+  letter-spacing: 0.04em;
+}
+
+.pem-save {
+  padding: 0.6rem 2rem;
+  background: var(--ink);
+  color: #fff;
+  border: none;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: background 150ms;
+}
+
+.pem-save:hover { background: var(--accent); }
+
+/* =============================================
+   HOME V2 — Cloth Text Portrait
+   ============================================= */
+.home-v2-page {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.v2-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.v2-slide {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+#cloth-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* Cloth parameter control panel */
+#cloth-ctrl {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 1.5rem;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+#ctrl-toggle {
+  padding: 0.45rem 0.85rem;
+  background: rgba(0,0,0,0.45);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.65);
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: background 150ms, color 150ms;
+}
+
+#ctrl-toggle:hover { background: rgba(0,0,0,0.65); color: #fff; }
+
+#ctrl-panel {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  padding: 1rem 1.1rem;
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(14px);
+  min-width: 260px;
+}
+
+#ctrl-panel.open { display: flex; }
+
+.ctrl-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ctrl-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.45);
+  width: 62px;
+  flex-shrink: 0;
+}
+
+.ctrl-row input[type="range"] {
+  flex: 1;
+  accent-color: #fff;
+  cursor: pointer;
+  height: 2px;
+}
+
+.ctrl-val {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: rgba(255,255,255,0.65);
+  width: 52px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.ctrl-text-row { align-items: center; }
+
+.ctrl-text-input {
+  flex: 1;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.14);
+  color: rgba(255,255,255,0.85);
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  padding: 0.3rem 0.5rem;
+  outline: none;
+  min-width: 0;
+  transition: border-color 150ms;
+}
+
+.ctrl-text-input::placeholder { color: rgba(255,255,255,0.25); }
+.ctrl-text-input:focus { border-color: rgba(255,255,255,0.38); }
+
+/* =============================================
+   CAROUSEL EDITOR MODAL
+   ============================================= */
+#carousel-editor-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cem-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  opacity: 0;
+  transition: opacity 240ms var(--ease);
+}
+
+#carousel-editor-modal.open .cem-backdrop { opacity: 1; }
+
+.cem-panel {
+  position: relative;
+  width: 420px;
+  max-width: calc(100vw - 2rem);
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: translateY(10px);
+  opacity: 0;
+  transition: transform 240ms var(--ease), opacity 240ms var(--ease);
+}
+
+#carousel-editor-modal.open .cem-panel { transform: none; opacity: 1; }
+
+.cem-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.cem-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink3);
+}
+
+.cem-close {
+  background: none;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--ink3);
+  padding: 0.25rem;
+  transition: color 150ms;
+}
+
+.cem-close:hover { color: var(--ink); }
+
+.cem-body {
+  padding: 1rem 1.25rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.cem-hint {
+  font-size: 11px;
+  color: var(--ink3);
+  line-height: 1.5;
+}
+
+.cem-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cem-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.35rem 0.5rem;
+  background: var(--bg2);
+}
+
+.cem-thumb {
+  width: 52px;
+  height: 34px;
+  flex-shrink: 0;
+  background: var(--bg3);
+  background-size: cover;
+  background-position: center;
+}
+
+.cem-select {
+  flex: 1;
+  min-width: 0;
+  background: #fff;
+  border: 1px solid var(--border);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  padding: 0.3rem 0.4rem;
+  color: var(--ink);
+  outline: none;
+  cursor: pointer;
+}
+
+.cem-up,
+.cem-dn,
+.cem-rm {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  background: #fff;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink2);
+  transition: background 150ms, color 150ms;
+}
+
+.cem-up:hover, .cem-dn:hover { background: var(--bg2); color: var(--ink); }
+.cem-up:disabled, .cem-dn:disabled { opacity: 0.3; cursor: not-allowed; }
+.cem-rm { color: #c0392b; }
+.cem-rm:hover { background: #fff0ef; }
+
+.cem-add {
+  align-self: flex-start;
+  padding: 0.5rem 1.25rem;
+  background: none;
+  border: 1px dashed var(--border);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  cursor: pointer;
+  color: var(--ink3);
+  transition: color 150ms, border-color 150ms;
+}
+
+.cem-add:hover { color: var(--accent); border-color: var(--accent); }
+
+/* =============================================
+   INFO EDITOR — text edit highlights + drag handles
+   ============================================= */
+.editor-active [data-info-key] {
+  outline: 1px dashed rgba(200,90,42,0.35);
+  outline-offset: 2px;
+  cursor: pointer;
+  transition: outline-color 150ms, background 150ms;
+}
+.editor-active [data-info-key]:hover {
+  outline-color: var(--accent);
+  background: rgba(200,90,42,0.05);
+}
+
+/* Row drag handle */
+.itr-handle {
+  visibility: hidden;
+  cursor: grab;
+  color: var(--ink3);
+  font-size: 12px;
+  user-select: none;
+  align-self: center;
+  letter-spacing: -2px;
+}
+.editor-active .itr-handle { visibility: visible; }
+.itr-handle:active { cursor: grabbing; }
+
+.col-resize-handle {
+  position: absolute;
+  right: -6px;
+  top: -4px;
+  bottom: -4px;
+  width: 12px;
+  cursor: col-resize;
+  z-index: 10;
+  display: none;
+}
+.editor-active .col-resize-handle { display: block; }
+.col-resize-handle::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 16px;
+  background: var(--ink3);
+  opacity: 0.3;
+  border-radius: 2px;
+  transition: opacity 150ms, background 150ms;
+}
+.col-resize-handle:hover::after { opacity: 1; background: var(--accent); }
+
+/* Info text editor popup */
+#info-text-editor {
+  position: fixed;
+  width: 272px;
+  background: #fff;
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.13);
+  z-index: 700;
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+.ite-head { display: flex; justify-content: space-between; align-items: center; }
+.ite-tag  { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink3); }
+.ite-x    { background: none; border: none; font-size: 12px; cursor: pointer; color: var(--ink3); }
+.ite-x:hover { color: var(--ink); }
+.ite-ta {
+  width: 100%; box-sizing: border-box;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--ink);
+  resize: vertical;
+  min-height: 44px;
+  outline: none;
+}
+.ite-ta:focus { border-color: var(--ink2); }
+.ite-row  { display: flex; align-items: center; gap: 8px; }
+.ite-lbl  { font-size: 10px; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.06em; width: 28px; flex-shrink: 0; }
+.ite-sz   { flex: 1; accent-color: var(--ink); }
+.ite-sv   { font-size: 10px; color: var(--ink3); width: 38px; text-align: right; }
+.ite-url  {
+  flex: 1;
+  min-width: 0;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--border);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--ink);
+  outline: none;
+}
+.ite-url:focus { border-color: var(--ink2); }
+.ite-btns { display: flex; gap: 6px; }
+.ite-del  {
+  padding: 0.38rem 0.7rem; background: none; border: 1px solid var(--border);
+  font-family: 'DM Mono', monospace; font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.06em; cursor: pointer; color: var(--ink3); white-space: nowrap;
+}
+.ite-del:hover { color: var(--ink); border-color: var(--ink3); }
+.ite-ok {
+  flex: 1; padding: 0.38rem 0.7rem; background: var(--ink); border: none;
+  font-family: 'DM Mono', monospace; font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.06em; cursor: pointer; color: #fff;
+}
+.ite-ok:hover { background: var(--accent); }
+
+/* =============================================
+   404
+   ============================================= */
+.not-found {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - var(--nav-h));
+  padding-top: var(--nav-h);
+  text-align: center;
+}
+
+.not-found-num {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 8rem;
+  color: var(--ink3);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.not-found-back {
+  margin-top: 2rem;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink2);
+  transition: color 200ms;
+}
+
+.not-found-back:hover { color: var(--accent); }
+
+/* =============================================
+   Responsive
+   ============================================= */
+@media (max-width: 768px) {
+  :root { --px: 1.25rem; }
+
+  html { font-size: 12px; }
+
+  /* Free-form blocks: switch to normal flow on small screens */
+  .projects-canvas {
+    position: static;
+    height: auto !important;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .project-block {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 16/9;
+  }
+
+  .editor-active .project-block .rh { display: none; }
+
+  .info-top {
+    grid-template-columns: 72px 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .info-contact {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+
+  .info-photo-ph { width: 72px; height: 72px; }
+
+  /* Statement/Credit are already plain document flow at every width
+     (see .detail-meta-row) — no override needed here. */
+
+  /* The fixed-left/scrolling-right split doesn't make sense on a narrow
+     screen — collapse back to a single stacked column. */
+  .detail-split {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .detail-left {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+    flex: 0 0 auto;
+    width: 100%;
+    padding: 2rem 0;
+  }
+
+  .detail-right {
+    width: 100%;
+  }
+
+  .detail-split-handle {
+    display: none !important;
+  }
+
+  /* Statement width resize doesn't translate well to narrow screens —
+     force full width and hide the resize anchor */
+  .detail-statement {
+    width: 100% !important;
+  }
+
+  .editor-active .detail-statement .rh { display: none; }
+
+  /* Free-form Credit block: switch to normal flow on small screens */
+  .credit-canvas {
+    height: auto !important;
+  }
+
+  .detail-credit {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .editor-active .credit-canvas .detail-credit .rh { display: none; }
+
+  .detail-cover-img {
+    padding: 0 0 2rem;
+  }
+
+  /* Free-form album/link blocks: switch to normal flow on small screens */
+  .outro-canvas {
+    height: auto !important;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .project-album,
+  .full-project-link {
+    position: static !important;
+    width: 100% !important;
+  }
+
+  .project-album { height: 0; padding-bottom: 70%; position: relative !important; }
+  .album-track   { position: absolute; inset: 0; }
+
+  .full-project-link { height: auto !important; }
+
+  .editor-active .project-album .rh,
+  .editor-active .full-project-link .rh { display: none; }
+
+  /* Free-form custom text/line blocks: switch to normal flow on small screens
+     (the desktop full-page overlay doesn't translate well to narrow viewports) */
+  .custom-canvas {
+    position: static !important;
+    height: auto !important;
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem var(--px);
+  }
+
+  .custom-text,
+  .custom-line {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .editor-active .custom-text .rh,
+  .editor-active .custom-line .rh { display: none; }
+
+  .detail-nav { grid-template-columns: 1fr; }
+  .detail-nav-item + .detail-nav-item {
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+}
+
+@media (max-width: 420px) {
+  .info-row { flex-direction: column; gap: 0.25rem; }
+  .info-exp-row { flex-direction: column; gap: 0.2rem; }
+}

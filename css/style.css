@@ -264,6 +264,7 @@ img { display: block; max-width: 100%; }
 }
 
 .project-card-cat {
+  font-family: 'Space Grotesk', sans-serif;
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -330,11 +331,15 @@ img { display: block; max-width: 100%; }
 
 /* Free-form draggable text blocks (phone/email, plus any user-added ones)
    — same convention as .ihb-block/.ihb-custom in the Info header. */
-.contact-canvas {
+.contact-canvas-wrap {
   position: relative;
   max-width: 820px;
   margin: 0 auto;
   min-height: 6rem;
+}
+.contact-canvas {
+  position: relative;
+  transform-origin: top left;
 }
 .contact-block {
   position: absolute;
@@ -398,10 +403,14 @@ img { display: block; max-width: 100%; }
    banner are all free-form blocks on one shared canvas (see
    .ihb-block below) — dragged/resized like the project grid, statement/
    credit, and custom text blocks elsewhere in the app. */
-.info-header-canvas {
+.info-header-canvas-wrap {
   position: relative;
   margin-bottom: 3rem;
   padding-bottom: 3rem;
+}
+.info-header-canvas {
+  position: relative;
+  transform-origin: top left;
 }
 
 .ihb-block {
@@ -590,9 +599,46 @@ img { display: block; max-width: 100%; }
    putting them on one row uses the space better than stacking them. */
 .info-lists-row {
   display: flex;
-  gap: 3rem;
+  column-gap: 3rem;
+  row-gap: 2.5rem;
   align-items: flex-start;
   position: relative;
+}
+
+/* Applied by applyInfoListsOverlapCheck (app.js) when the two sections'
+   own widths — plus the negative-margin "closer than a gap" trick the
+   drag handle above can apply (see infoListsGap) — no longer fit side
+   by side at the current viewport width. That margin is a fixed px
+   offset that doesn't shrink with the viewport, so past some width it
+   drags Awards left far enough to actually overlap Experience rather
+   than just sit close to it; stacking is the fix, so the margin needs
+   to go too — it only makes sense as a side-by-side effect (that reset
+   happens in applyInfoListsOverlapCheck itself, on the inline style —
+   a CSS rule here for it would need higher specificity than the width-
+   handle's own #info-award-section{margin-left:auto} centering rule to
+   win, which would then also wrongly override that centering). */
+.info-lists-row.info-lists-stacked {
+  flex-direction: column;
+  /* The row's own align-items:flex-start (for the side-by-side case,
+     top-aligning both sections) also stops a stacked child from
+     stretching to the row's full width — each one would just shrink to
+     its own content width instead, immediately narrow rather than
+     starting at its configured max-width and only narrowing once the
+     screen itself gets that tight, and it broke the margin:auto
+     centering below (nothing to center within). stretch fixes both. */
+  align-items: stretch;
+}
+/* align-items:stretch alone isn't enough with flex:1 1 0 (see above) —
+   an explicit flex-basis of 0 makes Chromium size the stretched cross
+   axis (width, in this column layout) off that same 0 instead of the
+   row's real width, landing each section at a sliver instead of
+   filling out to its own max-width. An explicit width forces the
+   correct basis for that sizing. */
+.info-lists-row.info-lists-stacked > .info-section {
+  width: 100%;
+}
+.info-lists-row.info-lists-stacked > .info-section:first-child {
+  border-bottom: 1px solid var(--border);
 }
 
 /* Drag handle in the gap between Experience/Awards — same visual
@@ -3466,6 +3512,100 @@ body:not(.editor-active) .info-proj-row[data-proj-link]:hover .itr-date {
   :root { --px: 1.25rem; }
 
   html { font-size: 12px; }
+
+  /* Header name + intro text — independently sized on mobile from
+     whatever the desktop custom sizes are, decoupled from the name/
+     photo block scaling that still applies as one unit on top of this
+     (see applyInfoHeaderPositions). !important is needed since a custom
+     size is set as an inline style (see is() in app.js), which would
+     otherwise always win over a plain class rule here. */
+  .ihb-block[data-ihb-id="location"] .info-location {
+    font-size: 15px !important;
+  }
+  .ihb-block[data-ihb-id="name"] .info-name {
+    font-size: 50px !important;
+  }
+  /* Shift the whole photo+name+location group right by a flat amount —
+     measured so the group ends up centered within the frozen 620px
+     canvas coordinate space (see INFO_HEADER_MIN_W/applyInfoHeaderPositions
+     in app.js): leftmost edge is the photo block's x, rightmost is name/
+     location's x+w, centering that span within 620 needs +58px. Defined
+     as a translateX in that same frozen space (not touching left, which
+     is inline/JS-computed) so it scales down together with everything
+     else instead of needing recalculating per viewport width. Photo and
+     location also get their own separate translateY nudge. */
+  .ihb-block[data-ihb-id="photo"] {
+    transform: translateX(58px) translateY(25px) scale(1.4);
+  }
+  .ihb-block[data-ihb-id="name"] {
+    transform: translateX(90px);
+  }
+  .ihb-block[data-ihb-id="location"] {
+    transform: translateX(90px) translateY(10px);
+  }
+
+  /* "Associated with __ N Projects" — applyTotalLineFit (app.js) already
+     auto-sizes this to fill the available width on one line, so it's
+     always as big as it can be without wrapping; the desktop-only extra
+     side padding (see .info-total-line) is what's actually capping how
+     big "as big as it can be" is on a narrow phone. Shrinking the
+     padding back down here gives the auto-fit more room to work with —
+     bigger text, still guaranteed one line since that's what the fit
+     calculation itself already guarantees. */
+  .info-total-line {
+    padding: 0 calc(var(--px) + 1.5rem);
+  }
+  .info-total-line-outer {
+    padding-top: 3.5rem;
+  }
+
+  /* Phone/email stacked vertically on mobile instead of side by side —
+     overriding left/top (set inline by applyContactPositions, hence
+     !important) with fixed values in the same frozen 820px coordinate
+     space .contact-canvas positions everything in (see CONTACT_MIN_W),
+     so this stays consistent at every mobile width once scaled. Placed
+     below the big banner text's own bottom edge (y:0, h:~0.083 → ~68px
+     in that space) rather than at y:0, or they'd sit on top of it. The
+     canvas's own height is normally computed from the stored y/h values
+     (unaware of this override), so wrap's min-height is bumped too —
+     min-height wins over a smaller inline height by spec, no !important
+     needed there — otherwise the footer below could overlap email. */
+  .contact-block[data-contact-id="phone"],
+  .contact-block[data-contact-id="email"] {
+    /* 380px measured wide enough to fit the email address on one line
+       at 26px without needing to break; centered within the 820px
+       frozen width: (820 - 380) / 2. */
+    left: 220px !important;
+    width: 380px !important;
+    text-align: center;
+  }
+  .contact-block[data-contact-id="phone"] p,
+  .contact-block[data-contact-id="email"] p {
+    font-size: 26px !important;
+  }
+  /* The big banner text ("LET'S DOOOO SOME FUUUUUN!") — any custom
+     contact block that isn't the fixed phone/email ones — matched to
+     the same 26px, and widened/recentered the same way as phone/email
+     so growing the font doesn't just make it wrap in its old (narrower)
+     box: 420px measured wide enough at 26px, centered as
+     (820 - 420) / 2. */
+  .contact-block:not([data-contact-id="phone"]):not([data-contact-id="email"]) {
+    left: 200px !important;
+    width: 420px !important;
+    text-align: center;
+  }
+  .contact-block:not([data-contact-id="phone"]):not([data-contact-id="email"]) p {
+    font-size: 26px !important;
+  }
+  .contact-block[data-contact-id="phone"] {
+    top: 90px !important;
+  }
+  .contact-block[data-contact-id="email"] {
+    top: 135px !important;
+  }
+  .contact-canvas-wrap {
+    min-height: 120px;
+  }
 
   /* Free-form blocks: switch to normal flow on small screens */
   .projects-canvas {

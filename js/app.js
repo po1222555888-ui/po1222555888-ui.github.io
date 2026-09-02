@@ -350,11 +350,27 @@ const IHB_LABELS = {
   email: 'Email', phone: '電話',
 };
 
+/* Below this canvas width, text blocks (fixed px font-size, independent
+   of the block-position fractions below) stop fitting their shrinking
+   box on one line and wrap — which, since blocks are free-form
+   absolutely-positioned, means they grow taller than their allotted
+   box and start overlapping whatever's below them. Empirically the
+   point this starts (checked against this site's actual name/skills
+   text and font sizes) is a bit under 600px. Below this width, the
+   position/size math is frozen as if the canvas were still this wide
+   (so photo and text keep exactly the same relative size and position
+   they'd have at that width), and the whole canvas is scaled down as
+   one visual unit instead — the photo and every text block shrink
+   together, never past each other. Above it, nothing changes: block
+   sizes still track the canvas's real width 1:1, same as before. */
+const INFO_HEADER_MIN_W = 620;
 function applyInfoHeaderPositions() {
+  const wrap = document.getElementById('info-header-canvas-wrap');
   const canvas = document.getElementById('info-header-canvas');
-  if (!canvas) return;
-  const W = canvas.offsetWidth;
-  if (!W) return;
+  if (!canvas || !wrap) return;
+  const availableW = wrap.offsetWidth;
+  if (!availableW) return;
+  const W = Math.max(availableW, INFO_HEADER_MIN_W);
   let maxBottom = 0;
   [...infoHeaderBlocks, ...infoCustomBlocks].forEach(b => {
     const el = canvas.querySelector(`[data-ihb-id="${b.id}"], [data-ihb-custom-id="${b.id}"]`);
@@ -365,14 +381,30 @@ function applyInfoHeaderPositions() {
     el.style.height = (b.h * W) + 'px';
     maxBottom = Math.max(maxBottom, (b.y + b.h) * W);
   });
-  canvas.style.height = Math.max(80, maxBottom) + 'px';
+  const naturalH = Math.max(80, maxBottom);
+  const scale = Math.min(1, availableW / INFO_HEADER_MIN_W);
+  canvas.style.width = W + 'px';
+  canvas.style.height = naturalH + 'px';
+  canvas.style.transform = scale < 1 ? `scale(${scale})` : '';
+  wrap.style.height = (naturalH * scale) + 'px';
 }
 
+/* Same overflow/wrap problem and fix as INFO_HEADER_MIN_W above — phone/
+   email/custom text have a fixed px font-size independent of these
+   fraction-based block sizes, so on a narrow phone their box shrinks
+   while the text inside doesn't, and it wraps and overflows into
+   whatever's below. Empirically (this site's actual phone/email/banner
+   text) that starts right around .contact-canvas's own 820px max-width,
+   so freezing at 820 and scaling down as a whole below that keeps it
+   from ever actually reaching that point. */
+const CONTACT_MIN_W = 820;
 function applyContactPositions() {
+  const wrap = document.getElementById('contact-canvas-wrap');
   const canvas = document.getElementById('contact-canvas');
-  if (!canvas || !contactBlocks) return;
-  const W = canvas.offsetWidth;
-  if (!W) return;
+  if (!canvas || !wrap || !contactBlocks) return;
+  const availableW = wrap.offsetWidth;
+  if (!availableW) return;
+  const W = Math.max(availableW, CONTACT_MIN_W);
   let maxBottom = 0;
   contactBlocks.forEach(b => {
     const el = canvas.querySelector(`[data-contact-id="${b.id}"]`);
@@ -383,7 +415,12 @@ function applyContactPositions() {
     el.style.height = (b.h * W) + 'px';
     maxBottom = Math.max(maxBottom, (b.y + b.h) * W);
   });
-  canvas.style.height = Math.max(60, maxBottom) + 'px';
+  const naturalH = Math.max(60, maxBottom);
+  const scale = Math.min(1, availableW / CONTACT_MIN_W);
+  canvas.style.width = W + 'px';
+  canvas.style.height = naturalH + 'px';
+  canvas.style.transform = scale < 1 ? `scale(${scale})` : '';
+  wrap.style.height = (naturalH * scale) + 'px';
 }
 
 /* =============================================
@@ -670,6 +707,7 @@ function renderHome() {
     applyContactPositions();
     applyProjRowLineOffset();
     applyTotalLineFit();
+    applyInfoListsOverlapCheck();
     requestAnimationFrame(() => {
       const target = pendingScrollTarget;
       pendingScrollTarget = null;
@@ -1007,6 +1045,40 @@ function applyTotalLineFit() {
   el.querySelectorAll('[data-info-key]').forEach(span => { span.style.fontSize = ''; });
 }
 window.addEventListener('resize', applyTotalLineFit);
+
+/* Experience/Awards normally sit side by side (see .info-lists-row),
+   and the negative-gap drag control (infoListsGap) can pull Awards left
+   via a fixed px margin-left to sit closer to — or deliberately overlap
+   — Experience. That fixed offset doesn't shrink with the viewport, so
+   at some narrower width the two sections start visually overlapping
+   instead of just sitting close. Detected here by measurement (not a
+   fixed breakpoint) so it stays correct regardless of how wide either
+   section's own width-handle or the gap control are currently set to —
+   a fixed breakpoint tuned for one configuration would be wrong for
+   another. .info-lists-stacked (see CSS) switches the row to a stacked
+   column and neutralizes the negative margin, which only makes sense
+   as a side-by-side effect. Always re-measured with the class removed
+   first so a since-widened window can un-stack again, not just stack
+   once and stay stuck. */
+function applyInfoListsOverlapCheck() {
+  const row = document.querySelector('.info-lists-row');
+  const exp = document.getElementById('info-exp-section');
+  const award = document.getElementById('info-award-section');
+  if (!row || !exp || !award) return;
+  // The negative margin is also set as an inline style (see the render
+  // template), which always wins over a stylesheet rule trying to zero
+  // it back out — so neutralizing/restoring it has to happen here in JS
+  // too, not just via the .info-lists-stacked CSS below.
+  const inlineMargin = infoListsGap < 0 ? infoListsGap + 'px' : '';
+  row.classList.remove('info-lists-stacked');
+  award.style.marginLeft = inlineMargin;
+  const expRect = exp.getBoundingClientRect();
+  const awardRect = award.getBoundingClientRect();
+  const overlapping = awardRect.left < expRect.right - 0.5;
+  row.classList.toggle('info-lists-stacked', overlapping);
+  if (overlapping) award.style.marginLeft = '';
+}
+window.addEventListener('resize', applyInfoListsOverlapCheck);
 
 // Info project-list row → project page navigation. A delegated listener
 // (rather than one bound per row) survives renderInfo()'s innerHTML
@@ -1681,17 +1753,19 @@ function buildInfoSectionHTML() {
     </div>
     <button class="ihb-add-btn" id="ihb-add-btn">+ 新增文字方塊</button>
   </div>
-  <div class="info-header-canvas" id="info-header-canvas">
-    ${infoHeaderBlocks.filter(b => !infoHeaderHidden.includes(b.id)).map(b => `
-    <div class="ihb-block" data-ihb-id="${b.id}">
-      ${ihbFixed[b.id] ? ihbFixed[b.id]() : ''}
-      <button class="ihb-del" data-ihb-hide="${b.id}" title="移除此方塊">✕</button>
-    </div>`).join('')}
-    ${infoCustomBlocks.map(b => `
-    <div class="ihb-block ihb-custom" data-ihb-custom-id="${b.id}">
-      <p style="font-size:${b.fontSize || 13}px;color:${b.color || '#6B6B65'};font-weight:${b.weight || 400}">${b.text || '雙擊以編輯文字'}</p>
-      <button class="ihb-del" data-ihb-custom-del="${b.id}" title="刪除此方塊">✕</button>
-    </div>`).join('')}
+  <div class="info-header-canvas-wrap" id="info-header-canvas-wrap">
+    <div class="info-header-canvas" id="info-header-canvas">
+      ${infoHeaderBlocks.filter(b => !infoHeaderHidden.includes(b.id)).map(b => `
+      <div class="ihb-block" data-ihb-id="${b.id}">
+        ${ihbFixed[b.id] ? ihbFixed[b.id]() : ''}
+        <button class="ihb-del" data-ihb-hide="${b.id}" title="移除此方塊">✕</button>
+      </div>`).join('')}
+      ${infoCustomBlocks.map(b => `
+      <div class="ihb-block ihb-custom" data-ihb-custom-id="${b.id}">
+        <p style="font-size:${b.fontSize || 13}px;color:${b.color || '#6B6B65'};font-weight:${b.weight || 400}">${b.text || '雙擊以編輯文字'}</p>
+        <button class="ihb-del" data-ihb-custom-del="${b.id}" title="刪除此方塊">✕</button>
+      </div>`).join('')}
+    </div>
   </div>
 
   <div class="info-total-line-outer">
@@ -1757,7 +1831,7 @@ function buildInfoSectionHTML() {
       <span>px</span>
     </div>
   </div>
-  <div class="info-lists-row" style="gap:${Math.max(infoListsGap, 0)}px">
+  <div class="info-lists-row" style="column-gap:${Math.max(infoListsGap, 0)}px">
     <div class="info-section" id="info-exp-section" style="--row-scale:${infoExpScale}${expRowHeight ? `;--row-h:${expRowHeight}px` : ''}">
       <h2 class="info-section-title"${ik('exp-title')}${is('exp-title')}>${iv('exp-title','Experience')}</h2>
       <div class="itr-scale-ctrl">
@@ -1817,12 +1891,14 @@ function buildContactSectionHTML() {
     <span></span>
     <button class="ihb-add-btn" id="contact-add-btn">+ 新增文字方塊</button>
   </div>
-  <div class="contact-canvas" id="contact-canvas">
-    ${contactBlocks.map(b => `
-    <div class="contact-block" data-contact-id="${b.id}">
-      <p style="font-size:${b.fontSize || 22}px;color:${b.color || '#F5F4F0'};font-weight:${b.weight || 500}">${b.text || '雙擊以編輯文字'}</p>
-      ${isFixed(b.id) ? '' : `<button class="ihb-del" data-contact-del="${b.id}" title="刪除此方塊">✕</button>`}
-    </div>`).join('')}
+  <div class="contact-canvas-wrap" id="contact-canvas-wrap">
+    <div class="contact-canvas" id="contact-canvas">
+      ${contactBlocks.map(b => `
+      <div class="contact-block" data-contact-id="${b.id}">
+        <p style="font-size:${b.fontSize || 22}px;color:${b.color || '#F5F4F0'};font-weight:${b.weight || 500}">${b.text || '雙擊以編輯文字'}</p>
+        ${isFixed(b.id) ? '' : `<button class="ihb-del" data-contact-del="${b.id}" title="刪除此方塊">✕</button>`}
+      </div>`).join('')}
+    </div>
   </div>
   <footer class="contact-footer">Air Chang © All rights reserved.</footer>`;
 }
@@ -1847,6 +1923,7 @@ function renderInfo() {
   requestAnimationFrame(applyInfoHeaderPositions);
   requestAnimationFrame(applyProjRowLineOffset);
   requestAnimationFrame(applyTotalLineFit);
+  requestAnimationFrame(applyInfoListsOverlapCheck);
 
   // Newly-revealed rows (see .itr-row-reveal) start hidden; flip them to
   // their visible state one frame later so the browser actually paints

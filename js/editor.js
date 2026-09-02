@@ -384,6 +384,7 @@
       const safe = (typeof v === 'number' && isFinite(v) && v >= 200 && v <= 4000) ? v : null;
       styleEl.textContent = safe === null ? '' :
         `${cfg.selector}{max-width:${safe}px;margin-left:auto;margin-right:auto;}`;
+      applyInfoListsOverlapCheck();
     }
 
     let resizeWired = false;
@@ -1621,8 +1622,9 @@
   function applyInfoListsGap() {
     const row = document.querySelector('.info-lists-row');
     const award = document.getElementById('info-award-section');
-    if (row) row.style.gap = Math.max(infoListsGap, 0) + 'px';
+    if (row) row.style.columnGap = Math.max(infoListsGap, 0) + 'px';
     if (award) award.style.marginLeft = infoListsGap < 0 ? infoListsGap + 'px' : '';
+    applyInfoListsOverlapCheck();
   }
 
   function injectInfoListsGapControl() {
@@ -1822,9 +1824,22 @@
     return [...infoHeaderBlocks.filter(b => !infoHeaderHidden.includes(b.id)), ...infoCustomBlocks];
   }
 
+  // Below INFO_HEADER_MIN_W (app.js), the canvas is frozen at that width
+  // and visually scaled down as a whole (see applyInfoHeaderPositions) —
+  // real mouse-pixel deltas during a drag/resize need dividing by this
+  // scale too (on top of W) to land back in the frozen fraction space,
+  // since on screen everything is smaller than its layout box implies.
+  function getInfoHeaderScale() {
+    const wrap = document.getElementById('info-header-canvas-wrap');
+    if (!wrap) return 1;
+    return Math.min(1, wrap.offsetWidth / INFO_HEADER_MIN_W);
+  }
+
   function updateInfoHeaderCanvasHeight(canvas, W) {
     const maxBottom = Math.max(80 / W, infoHeaderAlignItems().reduce((m, b) => Math.max(m, b.y + b.h), 0));
     canvas.style.height = (maxBottom * W) + 'px';
+    const wrap = document.getElementById('info-header-canvas-wrap');
+    if (wrap) wrap.style.height = (maxBottom * W * getInfoHeaderScale()) + 'px';
   }
 
   function openInfoCustomTextEditor(el, b) {
@@ -2164,6 +2179,7 @@
 
   function startInfoHeaderDrag(e, b, canvas, el) {
     const W = canvas.offsetWidth;
+    const scale = getInfoHeaderScale();
     const x0 = e.clientX, y0 = e.clientY;
     const bx0 = b.x, by0 = b.y;
     let moved = false;
@@ -2172,8 +2188,8 @@
     document.body.style.userSelect = 'none';
 
     function onMove(ev) {
-      const dx = (ev.clientX - x0) / W;
-      const dy = (ev.clientY - y0) / W;
+      const dx = (ev.clientX - x0) / (W * scale);
+      const dy = (ev.clientY - y0) / (W * scale);
       if (Math.abs(dx) + Math.abs(dy) > 0.002) moved = true;
 
       let nx = snap(bx0 + dx, SNAP_X);
@@ -2212,6 +2228,7 @@
 
   function startInfoHeaderResize(e, b, dir, canvas, el) {
     const W = canvas.offsetWidth;
+    const scale = getInfoHeaderScale();
     const x0 = e.clientX, y0 = e.clientY;
     const { x: ox, y: oy, w: ow, h: oh } = { ...b };
 
@@ -2219,8 +2236,8 @@
     document.body.style.cursor = el.querySelector(`.rh-${dir}`).style.cursor || 'default';
 
     function onMove(ev) {
-      const dx = (ev.clientX - x0) / W;
-      const dy = (ev.clientY - y0) / W;
+      const dx = (ev.clientX - x0) / (W * scale);
+      const dy = (ev.clientY - y0) / (W * scale);
 
       let { x, y, w, h } = { x: ox, y: oy, w: ow, h: oh };
 
@@ -2289,9 +2306,20 @@
     });
   }
 
+  // Same reasoning as getInfoHeaderScale — .contact-canvas gets frozen +
+  // visually scaled below CONTACT_MIN_W (app.js), so a mouse-pixel delta
+  // during drag/resize needs dividing by this too, on top of W.
+  function getContactScale() {
+    const wrap = document.getElementById('contact-canvas-wrap');
+    if (!wrap) return 1;
+    return Math.min(1, wrap.offsetWidth / CONTACT_MIN_W);
+  }
+
   function updateContactCanvasHeight(canvas, W) {
     const maxBottom = Math.max(60 / W, contactAlignItems().reduce((m, b) => Math.max(m, b.y + b.h), 0));
     canvas.style.height = (maxBottom * W) + 'px';
+    const wrap = document.getElementById('contact-canvas-wrap');
+    if (wrap) wrap.style.height = (maxBottom * W * getContactScale()) + 'px';
   }
 
   function injectContactControls() {
@@ -2404,6 +2432,7 @@
 
   function startContactDrag(e, b, canvas, el) {
     const W = canvas.offsetWidth;
+    const scale = getContactScale();
     const x0 = e.clientX, y0 = e.clientY;
     const bx0 = b.x, by0 = b.y;
     let moved = false;
@@ -2412,8 +2441,8 @@
     document.body.style.userSelect = 'none';
 
     function onMove(ev) {
-      const dx = (ev.clientX - x0) / W;
-      const dy = (ev.clientY - y0) / W;
+      const dx = (ev.clientX - x0) / (W * scale);
+      const dy = (ev.clientY - y0) / (W * scale);
       if (Math.abs(dx) + Math.abs(dy) > 0.002) moved = true;
 
       let nx = snap(bx0 + dx, SNAP_X);
@@ -2449,6 +2478,7 @@
 
   function startContactResize(e, b, dir, canvas, el) {
     const W = canvas.offsetWidth;
+    const scale = getContactScale();
     const x0 = e.clientX, y0 = e.clientY;
     const { x: ox, y: oy, w: ow, h: oh } = { ...b };
 
@@ -2456,8 +2486,8 @@
     document.body.style.cursor = el.querySelector(`.rh-${dir}`).style.cursor || 'default';
 
     function onMove(ev) {
-      const dx = (ev.clientX - x0) / W;
-      const dy = (ev.clientY - y0) / W;
+      const dx = (ev.clientX - x0) / (W * scale);
+      const dy = (ev.clientY - y0) / (W * scale);
 
       let { x, y, w, h } = { x: ox, y: oy, w: ow, h: oh };
 

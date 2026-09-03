@@ -2065,8 +2065,44 @@ function renderDetail(slug) {
     const albumEl = document.querySelector('.project-album');
     if (albumEl) startAlbumCarousel(albumEl);
     initGalleryRevealObserver();
+    applyMobileOutroOrder();
   });
 }
+
+/* On mobile, the album + "Full Project" link are moved to the very end
+   of the page, side by side, after the gallery images — which live in a
+   different container (.detail-right) than their normal home inside
+   .outro-canvas/.detail-left, so this can't be done with a CSS order
+   property alone without flattening both containers. A wrapper div
+   (mobile-only, created here) holds the pair so CSS can lay them out as
+   a row; on desktop everything is moved back to its original free-form
+   position inside .outro-canvas and the wrapper is discarded. Moving
+   the actual DOM nodes (not cloning) keeps their drag/upload listeners
+   and the carousel timer intact across the move. */
+function applyMobileOutroOrder() {
+  const isMobile = window.matchMedia('(max-width: 768px)').matches;
+  const album = document.querySelector('.project-album');
+  const link = document.querySelector('.full-project-link');
+  const outroCanvas = document.getElementById('outro-canvas');
+  const detailSplit = document.querySelector('.detail-split');
+  if (!album || !link || !outroCanvas || !detailSplit) return;
+  if (isMobile) {
+    let wrap = document.getElementById('mobile-outro-wrap');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.id = 'mobile-outro-wrap';
+      wrap.className = 'mobile-outro-wrap';
+      detailSplit.appendChild(wrap);
+    }
+    wrap.appendChild(album);
+    wrap.appendChild(link);
+  } else {
+    outroCanvas.insertBefore(album, outroCanvas.firstChild);
+    outroCanvas.appendChild(link);
+    document.getElementById('mobile-outro-wrap')?.remove();
+  }
+}
+window.addEventListener('resize', applyMobileOutroOrder);
 
 /* Scroll reveal for the detail-page gallery images — same mechanic as
    initProjectRevealObserver on the home page (see there for the full

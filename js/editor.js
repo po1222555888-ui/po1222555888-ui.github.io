@@ -315,7 +315,15 @@
   function applyTableColWidths() {
     // Excel-like: every visible column gets its own explicit px width (no
     // auto-filling 1fr column), built from whichever columns aren't hidden.
-    const visible = projColOrder.filter(k => !projHiddenCols.includes(k));
+    // On mobile, "role" is ALSO dropped (see .itr-role{display:none} in
+    // the ≤768px media query) — that CSS rule only hides its own text
+    // though; without excluding it here too, the grid still reserved a
+    // full track for it (an empty gap, not extra room for the others),
+    // since this function has no idea a column's content is invisible.
+    // Dropping the track here is what actually gives that space to
+    // "name" instead of leaving it stranded.
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    const visible = projColOrder.filter(k => !projHiddenCols.includes(k) && !(isMobile && k === 'role'));
     let corrected = false;
     let totalPx = 0;
     const track = visible.map(k => {
@@ -336,8 +344,29 @@
       // shrink when the container can't fit it; the row's own width/
       // max-width below is what makes it actually fill that narrower
       // space instead of just clipping.
-      return `minmax(0, ${projColWidths[k]}px)`;
+      //
+      // On mobile specifically, use the same number as a flex factor
+      // (minmax(0, Nfr)) instead of a px cap. Verified empirically: at a
+      // squeeze this extreme (desktop column widths crammed into a phone
+      // screen), minmax(0, Npx) tracks don't actually shrink in
+      // proportion to their own px value — Chromium just distributes the
+      // deficit equally across all of them, landing "name" at the same
+      // width as "date" regardless of how much wider it was configured
+      // to be. Nfr tracks distribute space (both surplus and deficit) by
+      // that ratio always, which is what actually keeps name the
+      // dominant column instead of shrinking it down to match the others.
+      return isMobile
+        ? `minmax(0, ${projColWidths[k]}fr)`
+        : `minmax(0, ${projColWidths[k]}px)`;
     }).join(' ');
+    if (isMobile) {
+      // Nfr tracks already fill 100% of the container on their own —
+      // no width/max-width cap needed (or wanted: capping at maxW here
+      // would just leave dead space on the right on mobile).
+      tableColsStyleEl.textContent = `.info-proj-head,.info-proj-row{grid-template-columns:${track}}`;
+      if (corrected) saveAll();
+      return;
+    }
     const rowEl = document.querySelector('.info-proj-row') || document.querySelector('.info-proj-head');
     const gapPx = rowEl ? (parseFloat(getComputedStyle(rowEl).columnGap) || 0) : 24;
     const maxW = totalPx + gapPx * Math.max(visible.length - 1, 0);
@@ -519,6 +548,7 @@
   window.addEventListener('resize', applyBlockPositions);
   window.addEventListener('resize', applyInfoHeaderPositions);
   window.addEventListener('resize', applyContactPositions);
+  window.addEventListener('resize', applyTableColWidths);
 
   /* =============================================
      Floating Toolbar

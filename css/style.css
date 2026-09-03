@@ -1325,9 +1325,13 @@ body:not(.editor-active) .info-proj-row[data-proj-link]:hover .itr-date {
 }
 
 @media (max-width: 768px) {
-  .info-proj-head,
+  /* grid-template-columns for the row itself is computed dynamically by
+     applyTableColWidths (editor.js), which is mobile-aware (drops the
+     "role" track entirely to match .itr-role below) — a static rule
+     here would just be dead weight, overridden by that injected style
+     regardless (it's added later in the document, so it always wins a
+     tie in specificity). */
   .info-proj-row {
-    grid-template-columns: 70px minmax(0, 1fr) 70px;
     gap: 0.75rem;
   }
   .itr-role { display: none; }
@@ -3559,6 +3563,16 @@ body:not(.editor-active) .info-proj-row[data-proj-link]:hover .itr-date {
     padding-top: 3.5rem;
   }
 
+  /* Experience/Awards, stacked on mobile (see .info-lists-stacked in
+     applyInfoListsOverlapCheck) — narrower than the full content width
+     with extra margin on top of the page's own edge padding, so they
+     don't sit flush against the screen edge. */
+  .info-lists-row.info-lists-stacked > .info-section {
+    width: calc(100% - 3rem);
+    margin-left: auto;
+    margin-right: auto;
+  }
+
   /* Phone/email stacked vertically on mobile instead of side by side —
      overriding left/top (set inline by applyContactPositions, hence
      !important) with fixed values in the same frozen 820px coordinate
@@ -3645,6 +3659,13 @@ body:not(.editor-active) .info-proj-row[data-proj-link]:hover .itr-date {
   .detail-split {
     flex-direction: column;
     gap: 0;
+    /* .detail-split's own padding is --detail-split-inset-l/r (see base
+       rule) — a desktop drag-handle setting that's a flat px value with
+       no relationship to viewport width. Left as-is, a wide desktop
+       inset (e.g. 200px+ a side) eats most or all of a phone screen's
+       width, which was forcing the entire page wider than the viewport.
+       Reset to the page's own standard edge padding on mobile instead. */
+    padding: 0 var(--px);
   }
 
   .detail-left {
@@ -3665,9 +3686,10 @@ body:not(.editor-active) .info-proj-row[data-proj-link]:hover .itr-date {
   }
 
   /* Statement width resize doesn't translate well to narrow screens —
-     force full width and hide the resize anchor */
+     force full width (minus a bit of right breathing room, so the text
+     doesn't run flush to the edge) and hide the resize anchor */
   .detail-statement {
-    width: 100% !important;
+    width: calc(100% - 4rem) !important;
   }
 
   .editor-active .detail-statement .rh { display: none; }
@@ -3701,12 +3723,57 @@ body:not(.editor-active) .info-proj-row[data-proj-link]:hover .itr-date {
   .full-project-link {
     position: static !important;
     width: 100% !important;
+    left: 0 !important;
+    top: 0 !important;
   }
 
-  .project-album { height: 0; padding-bottom: 70%; position: relative !important; }
+  /* position:relative here (not static like full-project-link above) so
+     .album-track's own position:absolute;inset:0 still has something to
+     anchor to — but left/top are only ever IGNORED on a position:static
+     element; switching back to relative makes the desktop free-form
+     block's leftover inline left/top (its old drag position) apply
+     again as a relative offset, shifting the album out from under its
+     container and overflowing the page. Reset explicitly rather than
+     relying on the static override above, which no longer applies once
+     this rule (same specificity, later in source) changes position. */
+  .project-album {
+    height: 0;
+    padding-bottom: 70%;
+    position: relative !important;
+    left: 0 !important;
+    top: 0 !important;
+  }
   .album-track   { position: absolute; inset: 0; }
 
   .full-project-link { height: auto !important; }
+
+  /* Album + link moved here as a pair by applyMobileOutroOrder (app.js)
+     — side by side instead of each full-width, so the album can be
+     smaller. Higher specificity than the plain .project-album/
+     .full-project-link rules above (both selectors here have an extra
+     class), which is what lets these still win despite both sides being
+     !important — needed since the property itself (width) is
+     !important there. */
+  .mobile-outro-wrap {
+    /* .detail-split's own align-items:flex-start (desktop's sticky-left
+       layout) isn't reset for the column direction here — same as
+       .detail-left/.detail-right above, a flex child shrinks to content
+       width instead of filling the line without an explicit width. */
+    width: 100%;
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+    padding: 1rem 0 2.5rem;
+  }
+  .mobile-outro-wrap .project-album {
+    width: 45% !important;
+    flex: 0 0 45%;
+  }
+  .mobile-outro-wrap .full-project-link {
+    width: auto !important;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
 
   .editor-active .project-album .rh,
   .editor-active .full-project-link .rh { display: none; }
@@ -3737,6 +3804,20 @@ body:not(.editor-active) .info-proj-row[data-proj-link]:hover .itr-date {
   .detail-nav-item + .detail-nav-item {
     border-left: none;
     border-top: 1px solid var(--border);
+  }
+  /* Centered on mobile — desktop's right/left split alignment (see the
+     base .detail-nav-item:first-child rule) only makes sense when both
+     items sit side by side pointing toward each other; stacked, that
+     just leaves Previous hugging the right edge and Next hugging the
+     left. --detail-nav-inset-l/r (a desktop drag-handle setting, same
+     class of fixed-px value as the split's own inset) is reset to the
+     page's standard edge padding for the same reason as .detail-split. */
+  .detail-nav-item,
+  .detail-nav-item:first-child,
+  .detail-nav-item:last-child {
+    text-align: center;
+    padding-left: var(--px);
+    padding-right: var(--px);
   }
 }
 
